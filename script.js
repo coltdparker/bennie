@@ -49,14 +49,15 @@ function showError(message) {
     const errorDiv = document.createElement('div');
     errorDiv.className = 'error-message';
     errorDiv.style.cssText = `
-        color: #e74c3c;
-        background: #fdf2f2;
+        color: #dc2626;
+        background: #fef2f2;
         border: 1px solid #fecaca;
         padding: 0.75rem 1rem;
         border-radius: 8px;
         margin-top: 1rem;
         font-size: 0.9rem;
         text-align: center;
+        font-weight: 500;
     `;
     errorDiv.textContent = message;
     
@@ -154,14 +155,15 @@ function showFormError(message) {
     const errorDiv = document.createElement('div');
     errorDiv.className = 'form-error-message';
     errorDiv.style.cssText = `
-        color: #e74c3c;
-        background: #fdf2f2;
+        color: #dc2626;
+        background: #fef2f2;
         border: 1px solid #fecaca;
         padding: 0.75rem 1rem;
         border-radius: 8px;
         margin-top: 1rem;
         font-size: 0.9rem;
         text-align: center;
+        font-weight: 500;
     `;
     errorDiv.textContent = message;
     
@@ -186,6 +188,7 @@ function showSuccess(name) {
         spanish: 'Spanish',
         french: 'French',
         mandarin: 'Mandarin Chinese',
+        japanese: 'Japanese',
         german: 'German',
         italian: 'Italian'
     };
