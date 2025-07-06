@@ -88,7 +88,7 @@ def send_language_learning_email(user_name: str, user_email: str, user_language:
 
 Requirements:
 - Write in {user_language}
-- Cater to a level {str(user_level)} speaker
+- Cater to a level {str(user_level)} out of 100 speaker where 100 is a native level proficient speaker.
 - Keep the message to 3-4 sentences
 - End the message in a way that allows the email recipient to carry on the conversation with their own email response. 
 - Use 3 words that are likely new to the user
@@ -144,6 +144,6 @@ Requirements:
 
 if __name__ == "__main__":
     print("Sending email with language learning content...")
-    send_language_learning_email(user_name="Colt", user_email="coltdparker@gmail.com", user_language="chinese", user_level=1)  # user_language is all lowercase
+    send_language_learning_email(user_name="Colt", user_email="coltdparker@gmail.com", user_language="chinese", user_level=18)  # user_language is all lowercase
 
 
