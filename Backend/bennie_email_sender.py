@@ -91,10 +91,10 @@ Requirements:
 - Cater to a level {str(user_level)} out of 100 speaker where 100 is a native level proficient speaker.
 - Keep the message to 3-4 sentences
 - End the message in a way that allows the email recipient to carry on the conversation with their own email response. 
-- Use 3 words that are likely new to the user
+- Use 2-3 words that are likely new to the user
 - Keep the message friendly and engaging
 - Include a signature as Bennie
-- Include definitions of the 3 potentially new words at the bottom after the signature"""
+- Include definitions of the 2-3 potentially new words at the bottom after the signature"""
                 }
             ],
             max_tokens=500,

@@ -137,10 +137,46 @@ function handleFormSubmit(e) {
         </svg>
     `;
     
-    // Simulate API call (replace with actual backend integration)
-    setTimeout(() => {
-        showSuccess(name);
-    }, 2000);
+    // Send data to backend API
+    const userData = {
+        email: userEmail,
+        name: name,
+        language: selectedLanguage
+    };
+    
+    fetch('/api/users', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(userData)
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            showSuccess(name);
+        } else {
+            throw new Error(data.message || 'Failed to create user');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showFormError('Failed to create account. Please try again.');
+        
+        // Reset button
+        submitButton.disabled = false;
+        submitButton.innerHTML = `
+            <span>Start My Language Journey</span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+            </svg>
+        `;
+    });
 }
 
 // Show form error
