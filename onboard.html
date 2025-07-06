@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Get to Know You - Bennie</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .onboard-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        
+        .welcome-section {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+        
+        .welcome-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 32px;
+            font-weight: 600;
+            color: #FA7561;
+            margin: 0 0 15px 0;
+        }
+        
+        .welcome-subtitle {
+            font-size: 18px;
+            color: #4a4a4a;
+            margin: 0 0 30px 0;
+        }
+        
+        .skill-assessment {
+            margin-bottom: 50px;
+        }
+        
+        .skill-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 24px;
+            font-weight: 500;
+            color: #1a1a1a;
+            margin: 0 0 20px 0;
+            text-align: center;
+        }
+        
+        .skill-description {
+            font-size: 16px;
+            color: #4a4a4a;
+            text-align: center;
+            margin: 0 0 30px 0;
+        }
+        
+        .skill-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 15px;
+            margin-bottom: 40px;
+        }
+        
+        .skill-button {
+            background: white;
+            border: 2px solid #d1d1d1;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            color: #4a4a4a;
+            line-height: 1.5;
+        }
+        
+        .skill-button:hover {
+            border-color: #FA7561;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(250, 117, 97, 0.15);
+        }
+        
+        .skill-button.selected {
+            border-color: #FA7561;
+            background-color: #FA7561;
+            color: white;
+        }
+        
+        .skill-button.selected:hover {
+            background-color: #e85a4a;
+        }
+        
+        .form-section {
+            margin-bottom: 50px;
+        }
+        
+        .form-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 24px;
+            font-weight: 500;
+            color: #1a1a1a;
+            margin: 0 0 20px 0;
+            text-align: center;
+        }
+        
+        .form-group {
+            margin-bottom: 30px;
+        }
+        
+        .form-label {
+            display: block;
+            font-weight: 500;
+            color: #1a1a1a;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #d1d1d1;
+            border-radius: 8px;
+            font-size: 16px;
+            font-family: 'Inter', sans-serif;
+            transition: border-color 0.3s ease;
+            box-sizing: border-box;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: #FA7561;
+        }
+        
+        .form-textarea {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #d1d1d1;
+            border-radius: 8px;
+            font-size: 16px;
+            font-family: 'Inter', sans-serif;
+            transition: border-color 0.3s ease;
+            box-sizing: border-box;
+            resize: vertical;
+            min-height: 120px;
+        }
+        
+        .form-textarea:focus {
+            outline: none;
+            border-color: #FA7561;
+        }
+        
+        .char-count {
+            font-size: 12px;
+            color: #6b6b6b;
+            text-align: right;
+            margin-top: 5px;
+        }
+        
+        .submit-section {
+            text-align: center;
+            margin-top: 50px;
+        }
+        
+        .submit-button {
+            background-color: #FA7561;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .submit-button:hover {
+            background-color: #e85a4a;
+        }
+        
+        .submit-button:disabled {
+            background-color: #d1d1d1;
+            cursor: not-allowed;
+        }
+        
+        .success-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .success-popup {
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            text-align: center;
+            max-width: 400px;
+            margin: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        
+        .success-emoji {
+            font-size: 60px;
+            margin-bottom: 20px;
+        }
+        
+        .success-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 24px;
+            font-weight: 500;
+            color: #1a1a1a;
+            margin: 0 0 15px 0;
+        }
+        
+        .success-message {
+            font-size: 16px;
+            color: #4a4a4a;
+            margin: 0 0 30px 0;
+            line-height: 1.5;
+        }
+        
+        .home-link {
+            color: #6b6b6b;
+            text-decoration: none;
+            font-size: 14px;
+            transition: color 0.3s ease;
+        }
+        
+        .home-link:hover {
+            color: #FA7561;
+        }
+        
+        .loading {
+            display: none;
+        }
+        
+        .loading .submit-button {
+            background-color: #d1d1d1;
+        }
+        
+        @media (max-width: 768px) {
+            .skill-buttons {
+                grid-template-columns: 1fr;
+            }
+            
+            .onboard-container {
+                padding: 20px 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="onboard-container">
+            <!-- Welcome Section -->
+            <div class="welcome-section">
+                <h1 class="welcome-title">Welcome, <span id="userName">Friend</span>! 👋</h1>
+                <p class="welcome-subtitle">I'm so excited to get to know you better and personalize your <span id="userLanguage">language</span> learning journey!</p>
+            </div>
+
+            <form id="onboardForm">
+                <!-- Skill Assessment Section -->
+                <div class="skill-assessment">
+                    <h2 class="skill-title">How comfortable are you with <span id="userLanguage2">your language</span>?</h2>
+                    <p class="skill-description">Read these sentences and click the ones you could confidently say in <span id="userLanguage3">your language</span>. This helps me understand your current level!</p>
+                    
+                    <div class="skill-buttons" id="skillButtons">
+                        <!-- Buttons will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Learning Goals Section -->
+                <div class="form-section">
+                    <h2 class="form-title">What's your learning goal?</h2>
+                    <div class="form-group">
+                        <label for="learningGoal" class="form-label">Tell me why you want to learn <span id="userLanguage4">your language</span> and what you hope to achieve:</label>
+                        <textarea 
+                            id="learningGoal" 
+                            class="form-textarea" 
+                            placeholder="For example: I want to travel to Spain and have conversations with locals, or I need it for work to communicate with international clients..."
+                            maxlength="600"
+                        ></textarea>
+                        <div class="char-count"><span id="charCount">0</span>/600 characters</div>
+                    </div>
+                </div>
+
+                <!-- Topics of Interest Section -->
+                <div class="form-section">
+                    <h2 class="form-title">What interests you?</h2>
+                    <div class="form-group">
+                        <label for="topicsOfInterest" class="form-label">List up to 5 topics you'd love to chat about (separated by commas):</label>
+                        <input 
+                            type="text" 
+                            id="topicsOfInterest" 
+                            class="form-input" 
+                            placeholder="For example: cooking, travel, movies, technology, sports, music, books, art, science, history..."
+                        >
+                    </div>
+                </div>
+
+                <!-- Submit Section -->
+                <div class="submit-section">
+                    <button type="submit" class="submit-button" id="submitButton">
+                        <span>Complete My Profile</span>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+                        </svg>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Success Overlay -->
+        <div class="success-overlay" id="successOverlay">
+            <div class="success-popup">
+                <div class="success-emoji">🎉</div>
+                <h2 class="success-title">You're all set up!</h2>
+                <p class="success-message">Can't wait to chat!<br>Your pal, Bennie</p>
+                <a href="/" class="home-link">Return to homepage</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="onboard.js"></script>
+</body>
+</html> 
