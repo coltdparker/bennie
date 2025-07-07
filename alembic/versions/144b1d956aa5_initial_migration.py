@@ -17,9 +17,23 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Create enum types
-    op.execute("CREATE TYPE languageenum AS ENUM ('spanish', 'french', 'mandarin', 'japanese', 'german', 'italian')")
-    op.execute("CREATE TYPE authproviderenum AS ENUM ('google', 'email', 'custom')")
+    # Create enum types only if they do not exist
+    op.execute("""
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'languageenum') THEN
+            CREATE TYPE languageenum AS ENUM ('spanish', 'french', 'mandarin', 'japanese', 'german', 'italian');
+        END IF;
+    END$$;
+    """)
+    op.execute("""
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'authproviderenum') THEN
+            CREATE TYPE authproviderenum AS ENUM ('google', 'email', 'custom');
+        END IF;
+    END$$;
+    """)
     
     # Create users table
     op.create_table('users',
@@ -145,5 +159,5 @@ def downgrade() -> None:
     op.drop_table('users')
     
     # Drop enum types
-    op.execute("DROP TYPE languageenum")
-    op.execute("DROP TYPE authproviderenum") 
+    op.execute("DROP TYPE IF EXISTS languageenum CASCADE;")
+    op.execute("DROP TYPE IF EXISTS authproviderenum CASCADE;") 
