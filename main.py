@@ -19,6 +19,10 @@ load_dotenv()
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
+# Debug: Print environment variables (mask key)
+print("SUPABASE_URL:", SUPABASE_URL)
+print("SUPABASE_KEY:", SUPABASE_KEY[:6] + "..." if SUPABASE_KEY else None)
+
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # Create FastAPI app
@@ -62,27 +66,28 @@ class UserCreate(BaseModel):
 
 @app.post("/api/users")
 async def create_user(user_data: UserCreate):
-    """Create a new user using Supabase client."""
-    # Check if user already exists
-    response = supabase.table("users").select("id").eq("email", user_data.email).execute()
-    if response.data and len(response.data) > 0:
-        raise HTTPException(status_code=400, detail="User already exists")
-
-    # Insert new user
-    insert_data = {
-        "email": user_data.email,
-        "name": user_data.name,
-        "target_language": user_data.language.lower()
-    }
-    response = supabase.table("users").insert(insert_data).execute()
-    if response.error:
-        raise HTTPException(status_code=500, detail=str(response.error))
-    user_id = response.data[0]["id"] if response.data else None
-    return {
-        "success": True,
-        "user_id": user_id,
-        "message": "User created successfully"
-    }
+    try:
+        response = supabase.table("users").select("id").eq("email", user_data.email).execute()
+        if response.data and len(response.data) > 0:
+            raise HTTPException(status_code=400, detail="User already exists")
+        insert_data = {
+            "email": user_data.email,
+            "name": user_data.name,
+            "target_language": user_data.language.lower()
+        }
+        response = supabase.table("users").insert(insert_data).execute()
+        if response.error:
+            print("Supabase error:", response.error)
+            raise HTTPException(status_code=500, detail=str(response.error))
+        user_id = response.data[0]["id"] if response.data else None
+        return {
+            "success": True,
+            "user_id": user_id,
+            "message": "User created successfully"
+        }
+    except Exception as e:
+        print("Exception in /api/users:", e)
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))
