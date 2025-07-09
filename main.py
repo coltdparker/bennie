@@ -6,7 +6,7 @@ This file serves the frontend and provides API endpoints.
 
 import os
 import logging
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,9 +15,9 @@ import uvicorn
 from pydantic import BaseModel, EmailStr
 from supabase import create_client, Client
 from typing import Optional
-import sendgrid
-from sendgrid.helpers.mail import Mail, Email, To, Content
-import asyncio
+import sys
+sys.path.append('./Backend')
+from new_user_email import send_welcome_email
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -108,37 +108,8 @@ class UserCreate(BaseModel):
             }
         }
 
-SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
-FROM_EMAIL = os.getenv("FROM_EMAIL")
-
-async def send_welcome_email(to_email: str, user_name: str, target_language: str):
-    if not SENDGRID_API_KEY or not FROM_EMAIL:
-        logger.warning("SendGrid API key or FROM_EMAIL not set; skipping welcome email.")
-        return
-    sg = sendgrid.SendGridAPIClient(api_key=SENDGRID_API_KEY)
-    subject = "Welcome to Bennie! 🎉"
-    content = f"""
-    Hi {user_name},<br><br>
-    Welcome to Bennie! We're excited to help you learn {target_language.title()} with personalized emails.<br><br>
-    You'll start receiving your first lesson soon. If you have any questions, just reply to this email.<br><br>
-    Happy learning!<br>
-    The Bennie Team
-    """
-    mail = Mail(
-        from_email=Email(FROM_EMAIL, "Bennie"),
-        to_emails=To(to_email),
-        subject=subject,
-        html_content=Content("text/html", content)
-    )
-    try:
-        loop = asyncio.get_event_loop()
-        await loop.run_in_executor(None, sg.send, mail)
-        logger.info(f"Welcome email sent to {to_email}")
-    except Exception as e:
-        logger.error(f"Failed to send welcome email to {to_email}: {e}")
-
 @app.post("/api/users")
-async def create_user(user_data: UserCreate):
+async def create_user(user_data: UserCreate, background_tasks: BackgroundTasks):
     """
     Create a new user in the database.
     
@@ -192,12 +163,13 @@ async def create_user(user_data: UserCreate):
         user_id = insert_response.data[0]["id"]
         logger.info(f"User created successfully with ID: {user_id}")
 
-        # Send welcome email asynchronously (do not block API response)
-        asyncio.create_task(send_welcome_email(
-            to_email=insert_data["email"],
-            user_name=insert_data["name"],
-            target_language=insert_data["target_language"]
-        ))
+        # Send welcome email in the background
+        background_tasks.add_task(
+            send_welcome_email,
+            user_data.name.strip(),
+            user_data.email.lower().strip(),
+            user_data.language.lower().strip()
+        )
 
         return {
             "success": True,
