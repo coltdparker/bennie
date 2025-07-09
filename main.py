@@ -125,10 +125,12 @@ async def create_user(user_data: UserCreate):
         # Check if user already exists
         logger.info("Checking if user already exists...")
         existing_user_response = supabase.table("users").select("id").eq("email", user_data.email).execute()
+        logger.info(f"Supabase response for existing user: {existing_user_response}")
         
-        if existing_user_response.error:
-            logger.error(f"Error checking existing user: {existing_user_response.error}")
-            raise HTTPException(status_code=500, detail=f"Database error: {existing_user_response.error}")
+        # Check for error using status_code or data
+        if hasattr(existing_user_response, 'status_code') and existing_user_response.status_code >= 400:
+            logger.error(f"Error checking existing user: {existing_user_response}")
+            raise HTTPException(status_code=500, detail=f"Database error: {existing_user_response}")
         
         if existing_user_response.data and len(existing_user_response.data) > 0:
             logger.warning(f"User already exists: {user_data.email}")
@@ -145,10 +147,11 @@ async def create_user(user_data: UserCreate):
         
         # Insert new user
         insert_response = supabase.table("users").insert(insert_data).execute()
+        logger.info(f"Supabase response for insert: {insert_response}")
         
-        if insert_response.error:
-            logger.error(f"Supabase insert error: {insert_response.error}")
-            raise HTTPException(status_code=500, detail=f"Failed to create user: {insert_response.error}")
+        if hasattr(insert_response, 'status_code') and insert_response.status_code >= 400:
+            logger.error(f"Supabase insert error: {insert_response}")
+            raise HTTPException(status_code=500, detail=f"Failed to create user: {insert_response}")
         
         if not insert_response.data or len(insert_response.data) == 0:
             logger.error("No data returned from insert operation")
@@ -193,10 +196,11 @@ async def get_user(email: str):
         logger.info(f"Getting user: {email}")
         
         response = supabase.table("users").select("*").eq("email", email.lower().strip()).execute()
+        logger.info(f"Supabase response for get_user: {response}")
         
-        if response.error:
-            logger.error(f"Error getting user: {response.error}")
-            raise HTTPException(status_code=500, detail=f"Database error: {response.error}")
+        if hasattr(response, 'status_code') and response.status_code >= 400:
+            logger.error(f"Error getting user: {response}")
+            raise HTTPException(status_code=500, detail=f"Database error: {response}")
         
         if not response.data or len(response.data) == 0:
             raise HTTPException(status_code=404, detail="User not found")
