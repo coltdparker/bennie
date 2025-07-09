@@ -25,28 +25,53 @@ const charCount = document.getElementById('charCount');
 
 // User data
 let userData = {};
+let userToken = '';
 
 // Initialize
 document.addEventListener('DOMContentLoaded', function() {
     const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get('token');
+    userToken = urlParams.get('token');
     
-    if (!token) {
+    if (!userToken) {
         showError('Invalid access token. Please check your email link.');
         return;
     }
     
-    // Simulate user data (would come from backend)
-    userData = { name: 'Friend', language: 'your language', email: 'user@example.com' };
-    
-    updateUserInfo();
-    populateSkillButtons();
-    setupEventListeners();
+    // Fetch user data from backend
+    fetchUserData();
 });
+
+async function fetchUserData() {
+    try {
+        const response = await fetch(`/api/verify-token/${userToken}`);
+        
+        if (!response.ok) {
+            if (response.status === 404) {
+                showError('Invalid or expired token. Please check your email link or contact support.');
+            } else if (response.status === 400) {
+                showError('You have already completed onboarding. Welcome back!');
+            } else {
+                showError('Failed to load your information. Please try again.');
+            }
+            return;
+        }
+        
+        const data = await response.json();
+        userData = data.user;
+        
+        updateUserInfo();
+        populateSkillButtons();
+        setupEventListeners();
+        
+    } catch (error) {
+        console.error('Error fetching user data:', error);
+        showError('Failed to load your information. Please try again.');
+    }
+}
 
 function updateUserInfo() {
     document.querySelectorAll('#userName').forEach(el => el.textContent = userData.name);
-    document.querySelectorAll('#userLanguage, #userLanguage2, #userLanguage3, #userLanguage4').forEach(el => el.textContent = userData.language);
+    document.querySelectorAll('#userLanguage, #userLanguage2, #userLanguage3, #userLanguage4').forEach(el => el.textContent = userData.target_language);
 }
 
 function populateSkillButtons() {
@@ -92,7 +117,7 @@ function setupEventListeners() {
     onboardForm.addEventListener('submit', handleFormSubmit);
 }
 
-function handleFormSubmit(e) {
+async function handleFormSubmit(e) {
     e.preventDefault();
     
     const selectedButtons = document.querySelectorAll('.skill-button.selected');
@@ -101,14 +126,10 @@ function handleFormSubmit(e) {
     const estimatedLevel = Math.min(100, Math.max(1, maxLevel * 8));
     
     const formData = {
-        token: new URLSearchParams(window.location.search).get('token'),
         skillLevel: estimatedLevel,
         selectedSentences: selectedLevels,
         learningGoal: learningGoal.value.trim(),
-        topicsOfInterest: topicsOfInterest.value.trim(),
-        userEmail: userData.email,
-        userName: userData.name,
-        userLanguage: userData.language
+        topicsOfInterest: topicsOfInterest.value.trim()
     };
     
     if (!formData.learningGoal || !formData.topicsOfInterest || selectedLevels.length === 0) {
@@ -124,10 +145,38 @@ function handleFormSubmit(e) {
         </svg>
     `;
     
-    setTimeout(() => {
-        console.log('Onboarding data:', formData);
+    try {
+        // Submit to backend
+        const response = await fetch('/api/complete-onboarding', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                token: userToken,
+                skill_level: formData.skillLevel,
+                learning_goal: formData.learningGoal,
+                topics_of_interest: formData.topicsOfInterest
+            })
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || 'Failed to complete onboarding');
+        }
+        
+        const result = await response.json();
+        console.log('Onboarding completed:', result);
         showSuccess();
-    }, 2000);
+        
+    } catch (error) {
+        console.error('Error completing onboarding:', error);
+        showError(error.message || 'Failed to complete onboarding. Please try again.');
+        
+        // Re-enable submit button
+        submitButton.disabled = false;
+        submitButton.innerHTML = 'Complete Onboarding';
+    }
 }
 
 function showError(message) {
