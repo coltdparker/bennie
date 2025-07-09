@@ -19,6 +19,8 @@ from typing import Optional
 import sys
 sys.path.append('./Backend')
 from new_user_email import send_welcome_email
+from apscheduler.schedulers.background import BackgroundScheduler
+from Backend.send_batch_learning_emails import main as send_batch_emails_batch
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -48,12 +50,21 @@ def generate_verification_token() -> str:
     """Generate a secure verification token for onboarding."""
     return secrets.token_urlsafe(32)
 
+def start_scheduler():
+    scheduler = BackgroundScheduler(timezone="UTC")
+    # Monday, Wednesday, Friday at 8:00 UTC
+    scheduler.add_job(send_batch_emails_batch, 'cron', day_of_week='mon,wed,fri', hour=8, minute=0)
+    scheduler.start()
+
 # Create FastAPI app
 app = FastAPI(
     title="Bennie - AI Language Learning",
     description="AI-powered language learning through personalized emails",
     version="1.0.0"
 )
+
+# Start the scheduler when the app starts
+start_scheduler()
 
 # Add CORS middleware
 app.add_middleware(
