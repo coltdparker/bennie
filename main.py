@@ -6,6 +6,7 @@ This file serves the frontend and provides API endpoints.
 
 import os
 import logging
+import secrets
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -43,6 +44,10 @@ except Exception as e:
     logger.error(f"Failed to initialize Supabase client: {e}")
     raise
 
+def generate_verification_token() -> str:
+    """Generate a secure verification token for onboarding."""
+    return secrets.token_urlsafe(32)
+
 # Create FastAPI app
 app = FastAPI(
     title="Bennie - AI Language Learning",
@@ -67,12 +72,123 @@ async def read_root():
     """Serve the main landing page."""
     return FileResponse("index.html")
 
-@app.get("/onboard")                    # I assume that this is not complete as this needs a custom link that is for each user
+@app.get("/onboard")
 async def read_onboard():
     """Serve the onboarding page."""
     return FileResponse("onboard.html")
 
-@app.get("/health")                     # This is a health check endpoint for Railway to know that the backend is running
+@app.get("/api/verify-token/{token}")
+async def verify_token(token: str):
+    """
+    Verify a user's onboarding token and return their basic information.
+    
+    Args:
+        token: The verification token from the email link
+        
+    Returns:
+        dict: User information if token is valid
+        
+    Raises:
+        HTTPException: If token is invalid or expired
+    """
+    try:
+        logger.info(f"Verifying token: {token[:10]}...")
+        
+        # Find user by verification token
+        response = supabase.table("users").select("id, email, name, target_language, is_verified").eq("verification_token", token).execute()
+        
+        if hasattr(response, 'status_code') and response.status_code >= 400:
+            logger.error(f"Error verifying token: {response}")
+            raise HTTPException(status_code=500, detail=f"Database error: {response}")
+        
+        if not response.data or len(response.data) == 0:
+            logger.warning(f"Invalid token: {token[:10]}...")
+            raise HTTPException(status_code=404, detail="Invalid or expired token")
+        
+        user = response.data[0]
+        
+        # Check if user is already verified
+        if user.get("is_verified", False):
+            logger.warning(f"User already verified: {user['email']}")
+            raise HTTPException(status_code=400, detail="User already completed onboarding")
+        
+        return {
+            "success": True,
+            "user": {
+                "id": user["id"],
+                "email": user["email"],
+                "name": user["name"],
+                "target_language": user["target_language"]
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error in verify_token: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+class OnboardingData(BaseModel):
+    token: str
+    skill_level: int
+    learning_goal: str
+    topics_of_interest: str
+
+@app.post("/api/complete-onboarding")
+async def complete_onboarding(onboarding_data: OnboardingData):
+    """
+    Complete the user's onboarding process.
+    
+    Args:
+        onboarding_data: Onboarding information including token and user preferences
+        
+    Returns:
+        dict: Success response
+        
+    Raises:
+        HTTPException: If token is invalid or update fails
+    """
+    try:
+        logger.info(f"Completing onboarding for token: {onboarding_data.token[:10]}...")
+        
+        # First verify the token and get user
+        verify_response = supabase.table("users").select("id").eq("verification_token", onboarding_data.token).execute()
+        
+        if not verify_response.data or len(verify_response.data) == 0:
+            raise HTTPException(status_code=404, detail="Invalid or expired token")
+        
+        user_id = verify_response.data[0]["id"]
+        
+        # Update user with onboarding information
+        update_data = {
+            "proficiency_level": onboarding_data.skill_level,
+            "learning_goal": onboarding_data.learning_goal,
+            "topics_of_interest": onboarding_data.topics_of_interest,
+            "is_verified": True,
+            "verification_token": None,  # Clear the token after use
+            "updated_at": "now()"
+        }
+        
+        update_response = supabase.table("users").update(update_data).eq("id", user_id).execute()
+        
+        if hasattr(update_response, 'status_code') and update_response.status_code >= 400:
+            logger.error(f"Error updating user: {update_response}")
+            raise HTTPException(status_code=500, detail=f"Failed to update user: {update_response}")
+        
+        logger.info(f"Onboarding completed successfully for user ID: {user_id}")
+        
+        return {
+            "success": True,
+            "message": "Onboarding completed successfully"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error in complete_onboarding: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+@app.get("/health")
 async def health_check():
     """Health check endpoint for Railway."""
     try:
@@ -139,11 +255,15 @@ async def create_user(user_data: UserCreate, background_tasks: BackgroundTasks):
             logger.warning(f"User already exists: {user_data.email}")
             raise HTTPException(status_code=400, detail="User already exists")
         
+        # Generate verification token
+        verification_token = generate_verification_token()
+        
         # Prepare data for insertion
         insert_data = {
             "email": user_data.email.lower().strip(),
             "name": user_data.name.strip(),
-            "target_language": user_data.language.lower().strip()
+            "target_language": user_data.language.lower().strip(),
+            "verification_token": verification_token
         }
         
         logger.info(f"Inserting user data: {insert_data}")
@@ -163,12 +283,13 @@ async def create_user(user_data: UserCreate, background_tasks: BackgroundTasks):
         user_id = insert_response.data[0]["id"]
         logger.info(f"User created successfully with ID: {user_id}")
 
-        # Send welcome email in the background
+        # Send welcome email in the background with the verification token
         background_tasks.add_task(
             send_welcome_email,
             user_data.name.strip(),
             user_data.email.lower().strip(),
-            user_data.language.lower().strip()
+            user_data.language.lower().strip(),
+            verification_token
         )
 
         return {
@@ -219,6 +340,7 @@ async def get_user(email: str):
         user = response.data[0]
         # Remove sensitive fields
         user.pop("id", None)
+        user.pop("verification_token", None)
         
         return {"success": True, "user": user}
         

@@ -154,7 +154,11 @@ def send_welcome_email(user_name: str, user_email: str, user_language: str, user
         user_name (str): The user's name
         user_email (str): The user's email address
         user_language (str): The language they want to learn
+        user_token (str): The verification token for onboarding
     """
+    if not user_token:
+        print(f"Error: No verification token provided for user {user_email}")
+        return False
     load_dotenv()
     
     # Check if SendGrid API key is loaded
@@ -203,6 +207,14 @@ Your AI Language Learning Friend
             html_content=html_content,
             plain_text_content=plain_text_content
         )
+        
+        # Disable click tracking to prevent link rewriting
+        message.tracking_settings = {
+            "click_tracking": {
+                "enable": False,
+                "enable_text": False
+            }
+        }
         
         # Send email
         print(f"Sending welcome email to {user_name} ({user_email})")
