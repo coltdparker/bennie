@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 import sendgrid
 from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import Mail
+from sendgrid.helpers.mail import Mail, TrackingSettings, ClickTracking
 
 load_dotenv()
 
@@ -208,13 +208,10 @@ Your AI Language Learning Friend
             plain_text_content=plain_text_content
         )
         
-        # Disable click tracking to prevent link rewriting
-        message.tracking_settings = {
-            "click_tracking": {
-                "enable": False,
-                "enable_text": False
-            }
-        }
+        # Disable click tracking to prevent link rewriting (use SendGrid helpers)
+        tracking_settings = TrackingSettings()
+        tracking_settings.click_tracking = ClickTracking(enable=False, enable_text=False)
+        message.tracking_settings = tracking_settings
         
         # Send email
         print(f"Sending welcome email to {user_name} ({user_email})")
