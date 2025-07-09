@@ -88,22 +88,11 @@ function populateSkillButtons() {
             <div style="font-size: 12px; opacity: 0.7;">${sentence.category}</div>
         `;
         
-        button.addEventListener('click', () => toggleSkillButton(button));
+        // Each button toggles only itself
+        button.addEventListener('click', () => {
+            button.classList.toggle('selected');
+        });
         skillButtons.appendChild(button);
-    });
-}
-
-function toggleSkillButton(button) {
-    button.classList.toggle('selected');
-    
-    const selectedLevel = parseInt(button.dataset.level);
-    document.querySelectorAll('.skill-button').forEach(btn => {
-        const btnLevel = parseInt(btn.dataset.level);
-        if (btnLevel <= selectedLevel) {
-            btn.classList.add('selected');
-        } else {
-            btn.classList.remove('selected');
-        }
     });
 }
 
@@ -122,11 +111,11 @@ async function handleFormSubmit(e) {
     
     const selectedButtons = document.querySelectorAll('.skill-button.selected');
     const selectedLevels = Array.from(selectedButtons).map(btn => parseInt(btn.dataset.level));
-    const maxLevel = Math.max(...selectedLevels);
-    const estimatedLevel = Math.min(100, Math.max(1, maxLevel * 8));
+    // Calculate average difficulty
+    const avgLevel = selectedLevels.length > 0 ? Math.round(selectedLevels.reduce((a, b) => a + b, 0) / selectedLevels.length) : 1;
     
     const formData = {
-        skillLevel: estimatedLevel,
+        skillLevel: avgLevel,
         selectedSentences: selectedLevels,
         learningGoal: learningGoal.value.trim(),
         topicsOfInterest: topicsOfInterest.value.trim()
