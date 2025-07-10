@@ -7,7 +7,7 @@ This file serves the frontend and provides API endpoints.
 import os
 import logging
 import secrets
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Request, Header, Query
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -21,6 +21,8 @@ sys.path.append('./Backend')
 from new_user_email import send_welcome_email
 from apscheduler.schedulers.background import BackgroundScheduler
 from Backend.send_batch_learning_emails import main as send_batch_emails_batch
+
+import base64
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -360,6 +362,52 @@ async def get_user(email: str):
     except Exception as e:
         logger.error(f"Unexpected error in get_user: {e}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+SENDGRID_WEBHOOK_SECRET = os.getenv("SENDGRID_WEBHOOK_SECRET", "changeme")
+
+@app.post("/api/sendgrid-inbound")
+async def sendgrid_inbound(request: Request, secret: Optional[str] = Query(None)):
+    """
+    Endpoint to receive SendGrid Inbound Parse Webhook POSTs.
+    Expects multipart/form-data with at least 'from' and 'text' fields.
+    Secured with a 'secret' query parameter.
+    """
+    # Basic security check
+    if secret != SENDGRID_WEBHOOK_SECRET:
+        return {"success": False, "error": "Unauthorized"}
+
+    form = await request.form()
+    sender_email = form.get('from')
+    text_content = form.get('text')
+    # Optionally handle attachments, subject, etc.
+
+    if not sender_email or not text_content:
+        return {"success": False, "error": "Missing sender or content"}
+
+    # Extract just the email address (in case it's 'Name <email@example.com>')
+    import re
+    match = re.search(r'<(.+?)>', sender_email)
+    if match:
+        sender_email = match.group(1)
+    else:
+        sender_email = sender_email.strip()
+
+    # Find user by email
+    user_resp = supabase.table("users").select("id").eq("email", sender_email.lower()).execute()
+    if not user_resp.data or len(user_resp.data) == 0:
+        return {"success": False, "error": "User not found"}
+    user_id = user_resp.data[0]["id"]
+
+    # Insert into email_history
+    insert_resp = supabase.table("email_history").insert({
+        "user_id": user_id,
+        "content": text_content,
+        "is_from_bennie": False
+    }).execute()
+    if hasattr(insert_resp, 'status_code') and insert_resp.status_code >= 400:
+        return {"success": False, "error": f"DB error: {insert_resp}"}
+
+    return {"success": True, "message": "Reply saved"}
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))
