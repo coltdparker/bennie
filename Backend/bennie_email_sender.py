@@ -6,6 +6,9 @@ import sendgrid
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 from openai import OpenAI
+import logging
+
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -66,35 +69,25 @@ def send_language_learning_email(user_name: str, user_email: str, user_language:
     sendgrid_key = os.getenv("SENDGRID_API_KEY")
     
     if not openai_key:
-        print("Error: OPENAI_API_KEY not found in .env file")
-        return
+        logger.error("Error: OPENAI_API_KEY not found in .env file")
+        raise RuntimeError("OPENAI_API_KEY not found in .env file")
     
     if not sendgrid_key:
-        print("Error: SENDGRID_API_KEY not found in .env file")
-        return
+        logger.error("Error: SENDGRID_API_KEY not found in .env file")
+        raise RuntimeError("SENDGRID_API_KEY not found in .env file")
     
     try:
         # Create OpenAI client
         client = OpenAI(api_key=openai_key)
         
         # Get response from OpenAI
-        print("Getting response from OpenAI...")
+        logger.info("Getting response from OpenAI...")
         completion = client.chat.completions.create(
             model="gpt-4o", 
             messages=[
                 {
                     "role": "user",
-                    "content": f"""Your name is Bennie. You are a helpful AI friend who is helping {user_name} to learn {user_language} by sending them an email message talking about what you did today. 
-
-Requirements:
-- Write in {user_language}
-- Cater to a level {str(user_level)} out of 100 speaker where 100 is a native level proficient speaker.
-- Keep the message to 3-4 sentences
-- End the message in a way that allows the email recipient to carry on the conversation with their own email response. 
-- Use 2-3 words that are likely new to the user
-- Keep the message friendly and engaging
-- Include a signature as Bennie
-- Include definitions of the 2-3 potentially new words at the bottom after the signature"""
+                    "content": f"""Your name is Bennie. You are a helpful AI friend who is helping {user_name} to learn {user_language} by sending them an email message talking about what you did today. \n\nRequirements:\n- Write in {user_language}\n- Cater to a level {str(user_level)} out of 100 speaker where 100 is a native level proficient speaker.\n- Keep the message to 3-4 sentences\n- End the message in a way that allows the email recipient to carry on the conversation with their own email response. \n- Use 2-3 words that are likely new to the user\n- Keep the message friendly and engaging\n- Include a signature as Bennie\n- Include definitions of the 2-3 potentially new words at the bottom after the signature"""
                 }
             ],
             max_tokens=500,
@@ -106,12 +99,11 @@ Requirements:
         usage = completion.usage
         total_usage = usage.total_tokens
         estimated_cost = total_usage * model_rate
-        print(f"📊 OpenAI Usage: {usage.prompt_tokens} prompt tokens, {usage.completion_tokens} completion tokens, {usage.total_tokens} total tokens\nEstimated cost = ${estimated_cost}")
-
+        logger.info(f"📊 OpenAI Usage: {usage.prompt_tokens} prompt tokens, {usage.completion_tokens} completion tokens, {usage.total_tokens} total tokens. Estimated cost = ${estimated_cost}")
 
         bennies_response = completion.choices[0].message.content
-        print("✓ Got response from OpenAI")
-        print(f"Response length: {len(bennies_response)} characters")
+        logger.info("✓ Got response from OpenAI")
+        logger.info(f"Response length: {len(bennies_response)} characters")
         
         # Convert to HTML
         html_content = text_to_html(bennies_response)
@@ -126,20 +118,21 @@ Requirements:
         )
         
         # Send email
-        print(f"Sending email to {user_name}")
+        logger.info(f"Sending email to {user_name} <{user_email}>")
         sg = SendGridAPIClient(sendgrid_key)
         response = sg.send(message)
         
         if response.status_code == 202:
-            print(f"✓ Email sent to {user_name} successfully!")
-            print(f"Check your inbox for the {user_language} learning email!")
+            logger.info(f"✓ Email sent to {user_name} successfully!")
+            logger.info(f"Check your inbox for the {user_language} learning email!")
         else:
-            print(f"⚠ Unexpected status code: {response.status_code}")
-            print(f"Response body: {response.body}")
+            logger.error(f"⚠ Unexpected status code: {response.status_code}")
+            logger.error(f"Response body: {response.body}")
+            raise RuntimeError(f"SendGrid error: {response.status_code} {response.body}")
         
     except Exception as e:
-        print(f"Error: {e}")
-        print("Make sure both API keys are correctly set in your .env file")
+        logger.error(f"Error in send_language_learning_email: {e}")
+        raise
 
 
 if __name__ == "__main__":
