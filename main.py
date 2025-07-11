@@ -372,42 +372,114 @@ async def sendgrid_inbound(request: Request, secret: Optional[str] = Query(None)
     Expects multipart/form-data with at least 'from' and 'text' fields.
     Secured with a 'secret' query parameter.
     """
+    logger.info("=== SendGrid Inbound Webhook Received ===")
+    logger.info(f"Secret provided: {secret[:10] + '...' if secret else 'None'}")
+    logger.info(f"Expected secret: {SENDGRID_WEBHOOK_SECRET[:10] + '...' if SENDGRID_WEBHOOK_SECRET else 'None'}")
+    
     # Basic security check
     if secret != SENDGRID_WEBHOOK_SECRET:
+        logger.error(f"Unauthorized webhook attempt. Secret mismatch.")
         return {"success": False, "error": "Unauthorized"}
 
-    form = await request.form()
-    sender_email = form.get('from')
-    text_content = form.get('text')
-    # Optionally handle attachments, subject, etc.
+    try:
+        # Log all form data for debugging
+        form = await request.form()
+        logger.info(f"Form data received: {dict(form)}")
+        
+        sender_email = form.get('from')
+        text_content = form.get('text')
+        subject = form.get('subject', 'No subject')
+        
+        logger.info(f"Sender: {sender_email}")
+        logger.info(f"Subject: {subject}")
+        logger.info(f"Content length: {len(text_content) if text_content else 0}")
 
-    if not sender_email or not text_content:
-        return {"success": False, "error": "Missing sender or content"}
+        if not sender_email or not text_content:
+            logger.error("Missing sender or content in webhook")
+            return {"success": False, "error": "Missing sender or content"}
 
-    # Extract just the email address (in case it's 'Name <email@example.com>')
-    import re
-    match = re.search(r'<(.+?)>', sender_email)
-    if match:
-        sender_email = match.group(1)
-    else:
-        sender_email = sender_email.strip()
+        # Extract just the email address (in case it's 'Name <email@example.com>')
+        import re
+        match = re.search(r'<(.+?)>', sender_email)
+        if match:
+            sender_email = match.group(1)
+        else:
+            sender_email = sender_email.strip()
+        
+        logger.info(f"Cleaned sender email: {sender_email}")
 
-    # Find user by email
-    user_resp = supabase.table("users").select("id").eq("email", sender_email.lower()).execute()
+        # Find user by email
+        logger.info(f"Looking up user with email: {sender_email.lower()}")
+        user_resp = supabase.table("users").select("id, name").eq("email", sender_email.lower()).execute()
+        
+        if hasattr(user_resp, 'status_code') and user_resp.status_code >= 400:
+            logger.error(f"Database error looking up user: {user_resp}")
+            return {"success": False, "error": f"Database error: {user_resp}"}
+        
+        if not user_resp.data or len(user_resp.data) == 0:
+            logger.error(f"User not found for email: {sender_email}")
+            return {"success": False, "error": "User not found"}
+        
+        user_id = user_resp.data[0]["id"]
+        user_name = user_resp.data[0]["name"]
+        logger.info(f"Found user: {user_name} (ID: {user_id})")
+
+        # Insert into email_history
+        logger.info("Inserting reply into email_history table")
+        try:
+            insert_resp = supabase.table("email_history").insert({
+                "user_id": user_id,
+                "content": text_content,
+                "is_from_bennie": False
+            }).execute()
+            logger.info(f"Supabase insert response: {insert_resp}")
+            if hasattr(insert_resp, 'status_code') and insert_resp.status_code >= 400:
+                logger.error(f"Database error inserting email: {insert_resp}")
+                return {"success": False, "error": f"DB error: {insert_resp}"}
+        except Exception as db_exc:
+            logger.error(f"Exception during Supabase insert: {db_exc}")
+            return {"success": False, "error": f"Supabase insert exception: {str(db_exc)}"}
+
+        logger.info(f"✓ Successfully saved reply from {user_name} ({sender_email})")
+        return {"success": True, "message": "Reply saved"}
+
+    except Exception as e:
+        logger.error(f"Unexpected error in sendgrid_inbound: {e}")
+        return {"success": False, "error": f"Internal error: {str(e)}"}
+
+# ---
+# Helper endpoint for AI: fetch all email history for a user (by email)
+# This allows the AI agent to see the full conversation history for context and personalization.
+# ---
+@app.get("/api/email-history/{email}")
+async def get_email_history(email: str):
+    """
+    Fetch all email history for a user by their email address.
+    Returns a list of messages (from user and from Bennie) in chronological order.
+    """
+    logger.info(f"Fetching email history for user: {email}")
+    user_resp = supabase.table("users").select("id").eq("email", email.lower().strip()).execute()
     if not user_resp.data or len(user_resp.data) == 0:
+        logger.error(f"User not found for email: {email}")
         return {"success": False, "error": "User not found"}
     user_id = user_resp.data[0]["id"]
+    history_resp = supabase.table("email_history").select("*").eq("user_id", user_id).order("created_at", desc=False).execute()
+    logger.info(f"Fetched {len(history_resp.data) if history_resp.data else 0} messages for user_id {user_id}")
+    return {"success": True, "history": history_resp.data or []}
 
-    # Insert into email_history
-    insert_resp = supabase.table("email_history").insert({
-        "user_id": user_id,
-        "content": text_content,
-        "is_from_bennie": False
-    }).execute()
-    if hasattr(insert_resp, 'status_code') and insert_resp.status_code >= 400:
-        return {"success": False, "error": f"DB error: {insert_resp}"}
-
-    return {"success": True, "message": "Reply saved"}
+@app.get("/api/test-webhook")
+async def test_webhook():
+    """
+    Test endpoint to verify webhook URL is accessible.
+    """
+    logger.info("Webhook test endpoint accessed")
+    return {
+        "success": True,
+        "message": "Webhook endpoint is accessible",
+        "timestamp": "2025-01-27T00:00:00Z",
+        "webhook_url": "/api/sendgrid-inbound",
+        "secret_configured": bool(SENDGRID_WEBHOOK_SECRET and SENDGRID_WEBHOOK_SECRET != "changeme")
+    }
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))
