@@ -21,6 +21,7 @@ sys.path.append('./Backend')
 from new_user_email import send_welcome_email
 from apscheduler.schedulers.background import BackgroundScheduler
 from Backend.send_batch_learning_emails import main as send_batch_emails_batch
+from Backend.bennie_email_sender import send_language_learning_email
 
 import base64
 
@@ -410,7 +411,7 @@ async def sendgrid_inbound(request: Request, secret: Optional[str] = Query(None)
 
         # Find user by email
         logger.info(f"Looking up user with email: {sender_email.lower()}")
-        user_resp = supabase.table("users").select("id, name").eq("email", sender_email.lower()).execute()
+        user_resp = supabase.table("users").select("id, name, target_language, proficiency_level, instant_reply").eq("email", sender_email.lower()).execute()
         
         if hasattr(user_resp, 'status_code') and user_resp.status_code >= 400:
             logger.error(f"Database error looking up user: {user_resp}")
@@ -420,9 +421,13 @@ async def sendgrid_inbound(request: Request, secret: Optional[str] = Query(None)
             logger.error(f"User not found for email: {sender_email}")
             return {"success": False, "error": "User not found"}
         
-        user_id = user_resp.data[0]["id"]
-        user_name = user_resp.data[0]["name"]
-        logger.info(f"Found user: {user_name} (ID: {user_id})")
+        user = user_resp.data[0]
+        user_id = user["id"]
+        user_name = user["name"]
+        user_language = user["target_language"]
+        user_level = user.get("proficiency_level", 1)
+        instant_reply = user.get("instant_reply", False)
+        logger.info(f"Found user: {user_name} (ID: {user_id}), instant_reply={instant_reply}")
 
         # Insert into email_history
         logger.info("Inserting reply into email_history table")
@@ -439,6 +444,20 @@ async def sendgrid_inbound(request: Request, secret: Optional[str] = Query(None)
         except Exception as db_exc:
             logger.error(f"Exception during Supabase insert: {db_exc}")
             return {"success": False, "error": f"Supabase insert exception: {str(db_exc)}"}
+
+        # If instant_reply is enabled, send a language learning email immediately
+        if instant_reply:
+            logger.info(f"User {user_name} has instant_reply enabled. Sending immediate response...")
+            try:
+                send_language_learning_email(
+                    user_name=user_name,
+                    user_email=sender_email,
+                    user_language=user_language,
+                    user_level=user_level
+                )
+                logger.info(f"✓ Immediate language learning email sent to {user_name} ({sender_email})")
+            except Exception as e:
+                logger.error(f"Error sending instant reply email: {e}")
 
         logger.info(f"✓ Successfully saved reply from {user_name} ({sender_email})")
         return {"success": True, "message": "Reply saved"}
