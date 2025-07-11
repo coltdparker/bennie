@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS public.users (
   updated_at timestamp with time zone null,
   last_login timestamp with time zone null,
   auth_provider public.authproviderenum null,
+  instant_reply boolean null default false,
   constraint users_pkey primary key (id),
   constraint users_email_key unique (email)
 ) TABLESPACE pg_default;
