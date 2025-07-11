@@ -68,6 +68,16 @@ def send_language_learning_email(user_name: str, user_email: str, user_language:
     openai_key = os.getenv("OPENAI_API_KEY")
     sendgrid_key = os.getenv("SENDGRID_API_KEY")
     
+    # Masked API key logging
+    def mask_key(key):
+        if not key or len(key) < 8:
+            return "(not set or too short)"
+        return f"{key[:4]}...{key[-4:]}"
+    
+    logger.info(f"send_language_learning_email called with user_name={user_name}, user_email={user_email}, user_language={user_language}, user_level={user_level}")
+    logger.info(f"OPENAI_API_KEY (masked): {mask_key(openai_key)}")
+    logger.info(f"SENDGRID_API_KEY (masked): {mask_key(sendgrid_key)}")
+    
     if not openai_key:
         logger.error("Error: OPENAI_API_KEY not found in .env file")
         raise RuntimeError("OPENAI_API_KEY not found in .env file")
@@ -77,7 +87,8 @@ def send_language_learning_email(user_name: str, user_email: str, user_language:
         raise RuntimeError("SENDGRID_API_KEY not found in .env file")
     
     try:
-        # Create OpenAI client
+        # Log before OpenAI client initialization
+        logger.info("About to initialize OpenAI client...")
         client = OpenAI(api_key=openai_key)
         
         # Get response from OpenAI
