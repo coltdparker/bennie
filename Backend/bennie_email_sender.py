@@ -87,7 +87,14 @@ def send_language_learning_email(user_name: str, user_email: str, user_language:
         raise RuntimeError("SENDGRID_API_KEY not found in .env file")
     
     try:
+        # Log environment variables that might affect OpenAI
+        env_vars_to_log = {k: (mask_key(v) if 'KEY' in k or 'SECRET' in k else v) for k, v in os.environ.items() if k.startswith('OPENAI') or k.startswith('HTTP') or 'PROXY' in k}
+        logger.info(f"Relevant environment variables: {env_vars_to_log}")
         # Log before OpenAI client initialization
+        import openai as openai_module
+        logger.info(f"OpenAI package version: {getattr(openai_module, '__version__', 'unknown')}")
+        openai_client_args = {'api_key': mask_key(openai_key)}
+        logger.info(f"OpenAI client init args (masked): {openai_client_args}")
         logger.info("About to initialize OpenAI client...")
         client = OpenAI(api_key=openai_key)
         
