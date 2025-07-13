@@ -25,6 +25,7 @@ from Backend.bennie_email_sender import send_language_learning_email
 from Backend.openai_connectivity_test import test_openai
 
 import base64
+import httpx
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -500,6 +501,14 @@ async def test_webhook():
         "webhook_url": "/api/sendgrid-inbound",
         "secret_configured": bool(SENDGRID_WEBHOOK_SECRET and SENDGRID_WEBHOOK_SECRET != "changeme")
     }
+
+@app.get("/test-httpbin")
+def test_httpbin():
+    try:
+        r = httpx.get("https://httpbin.org/get", timeout=5)
+        return {"success": True, "status_code": r.status_code, "json": r.json()}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 # Register the /test-openai endpoint
 app.add_api_route("/test-openai", test_openai, methods=["GET"])
