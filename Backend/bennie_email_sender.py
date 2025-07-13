@@ -7,10 +7,29 @@ from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 from openai import OpenAI
 import logging
+from supabase import create_client, Client
+from typing import List, Dict, Optional, Tuple
+import random
+import json
 
 logger = logging.getLogger(__name__)
 
 load_dotenv()
+
+# Initialize Supabase client
+SUPABASE_URL: str = os.getenv("SUPABASE_URL")
+SUPABASE_KEY: str = os.getenv("SUPABASE_KEY")
+
+if not SUPABASE_URL or not SUPABASE_KEY:
+    logger.error("Missing required environment variables: SUPABASE_URL or SUPABASE_KEY")
+    raise ValueError("Missing required environment variables")
+
+try:
+    supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+    logger.info("Supabase client initialized successfully")
+except Exception as e:
+    logger.error(f"Failed to initialize Supabase client: {e}")
+    raise
 
 # Convert text to HTML format for proper email display
 def text_to_html(text):
@@ -55,12 +74,161 @@ def get_email_subject(user_language: str) -> str:
         # General fallback case for unsupported languages
         return f'Language Learning Email from Bennie! {user_language.title()} Learning Email'
 
+def get_user_context(user_email: str) -> Dict:
+    """
+    Fetch comprehensive user context from the database.
+    
+    Args:
+        user_email (str): User's email address
+        
+    Returns:
+        Dict: User context including profile and preferences
+    """
+    try:
+        # Get user profile
+        user_response = supabase.table("users").select(
+            "id, name, target_language, proficiency_level, topics_of_interest, learning_goal"
+        ).eq("email", user_email).execute()
+        
+        if not user_response.data:
+            logger.error(f"User not found: {user_email}")
+            raise ValueError(f"User not found: {user_email}")
+        
+        user = user_response.data[0]
+        
+        # Get recent email history (last 20 messages)
+        history_response = supabase.table("email_history").select(
+            "content, is_from_bennie, created_at"
+        ).eq("user_id", user["id"]).order("created_at", desc=True).limit(20).execute()
+        
+        email_history = history_response.data if history_response.data else []
+        
+        return {
+            "user_id": user["id"],
+            "name": user["name"],
+            "target_language": user["target_language"],
+            "proficiency_level": user["proficiency_level"] or 1,
+            "topics_of_interest": user["topics_of_interest"] or "",
+            "learning_goal": user["learning_goal"] or "",
+            "email_history": email_history
+        }
+        
+    except Exception as e:
+        logger.error(f"Error fetching user context: {e}")
+        raise
+
+def analyze_topic_diversity(email_history: List[Dict]) -> Tuple[List[str], bool]:
+    """
+    Analyze email history to determine topic diversity and suggest new vs repeated topics.
+    
+    Args:
+        email_history (List[Dict]): List of recent email history
+        
+    Returns:
+        Tuple[List[str], bool]: (recent_topics, should_use_new_topic)
+    """
+    # Extract topics from recent Bennie emails (last 7 messages)
+    recent_bennie_emails = [
+        email["content"] for email in email_history 
+        if email["is_from_bennie"] and email["content"]
+    ][:7]
+    
+    # Simple topic extraction (this could be enhanced with NLP)
+    recent_topics = []
+    for email in recent_bennie_emails:
+        # Extract potential topics from email content
+        # This is a simplified approach - could be enhanced with better NLP
+        lines = email.lower().split('\n')
+        for line in lines:
+            if any(keyword in line for keyword in ['today', 'yesterday', 'weekend', 'morning', 'evening', 'afternoon']):
+                # Extract the main activity/topic from the line
+                words = line.split()
+                if len(words) > 3:
+                    recent_topics.append(' '.join(words[:5]))  # First 5 words as topic
+                break
+    
+    # Decide whether to use new topic (50% chance) or repeat an old one
+    should_use_new_topic = random.random() < 0.5
+    
+    return recent_topics, should_use_new_topic
+
+def create_enhanced_prompt(user_context: Dict, recent_topics: List[str], should_use_new_topic: bool) -> str:
+    """
+    Create an enhanced prompt with comprehensive user context.
+    
+    Args:
+        user_context (Dict): User profile and preferences
+        recent_topics (List[str]): Recent conversation topics
+        should_use_new_topic (bool): Whether to introduce a new topic
+        
+    Returns:
+        str: Enhanced prompt for OpenAI
+    """
+    
+    # Bennie's personality and purpose
+    bennie_identity = """You are Bennie, a warm, enthusiastic, and encouraging AI language learning friend. You have a playful personality and love sharing your daily experiences. You're genuinely excited about helping people learn languages and you treat each user like a close friend. You're curious about their lives and always ask engaging questions to keep the conversation flowing."""
+
+    # User context section
+    user_info = f"""
+USER CONTEXT:
+- Name: {user_context['name']}
+- Target Language: {user_context['target_language']}
+- Proficiency Level: {user_context['proficiency_level']}/100 (1=beginner, 100=native)
+- Learning Goal: {user_context['learning_goal']}
+- Interests: {user_context['topics_of_interest']}
+"""
+
+    # Topic guidance
+    topic_guidance = f"""
+TOPIC GUIDANCE:
+- Recent topics discussed: {', '.join(recent_topics) if recent_topics else 'None yet'}
+- Should introduce new topic: {'Yes' if should_use_new_topic else 'No'}
+- If new topic: Choose something related to their interests: {user_context['topics_of_interest']}
+- If repeating topic: Choose a different angle or situation from their interests
+- Avoid repeating the exact same topic within 7 messages
+"""
+
+    # Language and content requirements
+    requirements = f"""
+REQUIREMENTS:
+- Write entirely in {user_context['target_language']}
+- Adjust complexity for level {user_context['proficiency_level']}/100:
+  * Level 1-20: Basic vocabulary, simple sentences, lots of cognates
+  * Level 21-40: Common phrases, present tense, basic questions
+  * Level 41-60: Past/future tense, compound sentences, cultural references
+  * Level 61-80: Complex grammar, idioms, nuanced expressions
+  * Level 81-100: Native-like fluency, sophisticated vocabulary, cultural depth
+- Keep message to 3-4 sentences
+- Include 2-3 new vocabulary words appropriate for their level
+- End with an engaging question that invites a response
+- Keep tone friendly, encouraging, and conversational
+- Include signature: "Con cariño, Bennie" (Spanish) / "Avec amitié, Bennie" (French) / etc.
+- Add vocabulary definitions at the bottom after signature
+- DO NOT mention their learning goals or proficiency level in the email
+- Focus on natural conversation, not explicit teaching
+"""
+
+    # Combine all sections
+    full_prompt = f"""{bennie_identity}
+
+{user_info}
+
+{topic_guidance}
+
+{requirements}
+
+Write your email now:"""
+
+    return full_prompt
 
 # ==========================================
-# Enhanced version with better error handling and formatting
-def send_language_learning_email(user_name: str, user_email: str, user_language: str, user_level: int):
+# Enhanced version with comprehensive user context
+def send_language_learning_email(user_email: str):
     """
-    Enhanced version with better error handling
+    Enhanced version with comprehensive user context and topic diversity.
+    
+    Args:
+        user_email (str): User's email address
     """
     load_dotenv()
     
@@ -74,7 +242,7 @@ def send_language_learning_email(user_name: str, user_email: str, user_language:
             return "(not set or too short)"
         return f"{key[:4]}...{key[-4:]}"
     
-    logger.info(f"send_language_learning_email called with user_name={user_name}, user_email={user_email}, user_language={user_language}, user_level={user_level}")
+    logger.info(f"send_language_learning_email called for user_email={user_email}")
     logger.info(f"OPENAI_API_KEY (masked): {mask_key(openai_key)}")
     logger.info(f"SENDGRID_API_KEY (masked): {mask_key(sendgrid_key)}")
     
@@ -87,33 +255,44 @@ def send_language_learning_email(user_name: str, user_email: str, user_language:
         raise RuntimeError("SENDGRID_API_KEY not found in .env file")
     
     try:
-        # Log environment variables that might affect OpenAI
-        env_vars_to_log = {k: (mask_key(v) if 'KEY' in k or 'SECRET' in k else v) for k, v in os.environ.items() if k.startswith('OPENAI') or k.startswith('HTTP') or 'PROXY' in k}
-        logger.info(f"Relevant environment variables: {env_vars_to_log}")
+        # Get comprehensive user context
+        logger.info("Fetching user context...")
+        user_context = get_user_context(user_email)
+        
+        # Analyze topic diversity
+        logger.info("Analyzing topic diversity...")
+        recent_topics, should_use_new_topic = analyze_topic_diversity(user_context["email_history"])
+        
+        # Create enhanced prompt
+        logger.info("Creating enhanced prompt...")
+        enhanced_prompt = create_enhanced_prompt(user_context, recent_topics, should_use_new_topic)
+        
         # Log before OpenAI client initialization
         import openai as openai_module
         logger.info(f"OpenAI package version: {getattr(openai_module, '__version__', 'unknown')}")
-        openai_client_args = {'api_key': mask_key(openai_key)}
-        logger.info(f"OpenAI client init args (masked): {openai_client_args}")
         logger.info("About to initialize OpenAI client...")
         client = OpenAI(api_key=openai_key)
         
-        # Get response from OpenAI
-        logger.info("Getting response from OpenAI...")
+        # Get response from OpenAI with enhanced context
+        logger.info("Getting response from OpenAI with enhanced context...")
         completion = client.chat.completions.create(
             model="gpt-4o", 
             messages=[
                 {
+                    "role": "system",
+                    "content": "You are Bennie, a warm and enthusiastic AI language learning friend. You write natural, conversational emails in the user's target language, sharing your daily experiences while helping them learn. You're encouraging, curious, and genuinely interested in their lives."
+                },
+                {
                     "role": "user",
-                    "content": f"""Your name is Bennie. You are a helpful AI friend who is helping {user_name} to learn {user_language} by sending them an email message talking about what you did today. \n\nRequirements:\n- Write in {user_language}\n- Cater to a level {str(user_level)} out of 100 speaker where 100 is a native level proficient speaker.\n- Keep the message to 3-4 sentences\n- End the message in a way that allows the email recipient to carry on the conversation with their own email response. \n- Use 2-3 words that are likely new to the user\n- Keep the message friendly and engaging\n- Include a signature as Bennie\n- Include definitions of the 2-3 potentially new words at the bottom after the signature"""
+                    "content": enhanced_prompt
                 }
             ],
-            max_tokens=500,
-            temperature=0.7
+            max_tokens=600,
+            temperature=0.8
         )
         
         # Print usage information
-        model_rate = 0.0000025 # $/tolken
+        model_rate = 0.0000025 # $/token
         usage = completion.usage
         total_usage = usage.total_tokens
         estimated_cost = total_usage * model_rate
@@ -130,19 +309,32 @@ def send_language_learning_email(user_name: str, user_email: str, user_language:
         message = Mail(
             from_email='Bennie@itsbennie.com',
             to_emails=user_email,
-            subject=get_email_subject(user_language=user_language),
+            subject=get_email_subject(user_language=user_context["target_language"]),
             html_content=html_content,
             plain_text_content=bennies_response
         )
         
         # Send email
-        logger.info(f"Sending email to {user_name} <{user_email}>")
+        logger.info(f"Sending email to {user_context['name']} <{user_email}>")
         sg = SendGridAPIClient(sendgrid_key)
         response = sg.send(message)
         
         if response.status_code == 202:
-            logger.info(f"✓ Email sent to {user_name} successfully!")
-            logger.info(f"Check your inbox for the {user_language} learning email!")
+            logger.info(f"✓ Email sent to {user_context['name']} successfully!")
+            logger.info(f"Check your inbox for the {user_context['target_language']} learning email!")
+            
+            # Save email to history
+            try:
+                supabase.table("email_history").insert({
+                    "user_id": user_context["user_id"],
+                    "content": bennies_response,
+                    "is_from_bennie": True,
+                    "difficulty_level": user_context["proficiency_level"]
+                }).execute()
+                logger.info("✓ Email saved to history")
+            except Exception as e:
+                logger.error(f"Failed to save email to history: {e}")
+                
         else:
             logger.error(f"⚠ Unexpected status code: {response.status_code}")
             logger.error(f"Response body: {response.body}")
@@ -152,9 +344,17 @@ def send_language_learning_email(user_name: str, user_email: str, user_language:
         logger.error(f"Error in send_language_learning_email: {e}")
         raise
 
+# Legacy function for backward compatibility
+def send_language_learning_email_legacy(user_name: str, user_email: str, user_language: str, user_level: int):
+    """
+    Legacy version for backward compatibility - redirects to new function.
+    """
+    logger.warning("Using legacy function - consider updating to use send_language_learning_email(user_email)")
+    return send_language_learning_email(user_email)
 
 if __name__ == "__main__":
-    print("Sending email with language learning content...")
-    send_language_learning_email(user_name="Colt", user_email="coltdparker@gmail.com", user_language="chinese", user_level=18)  # user_language is all lowercase
+    print("Sending email with enhanced language learning content...")
+    # Test with a user email
+    send_language_learning_email("coltdparker@gmail.com") 
 
 

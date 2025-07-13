@@ -20,7 +20,7 @@ BATCH_SIZE = 100
 
 def get_users_to_email(supabase, offset=0, limit=BATCH_SIZE):
     # Only active, verified users
-    response = supabase.table("users").select("name,email,target_language,proficiency_level").eq("is_active", True).eq("is_verified", True).range(offset, offset+limit-1).execute()
+    response = supabase.table("users").select("email").eq("is_active", True).eq("is_verified", True).range(offset, offset+limit-1).execute()
     return response.data
 
 def main():
@@ -43,16 +43,24 @@ def main():
 
     users = get_users_to_email(supabase, offset=offset, limit=BATCH_SIZE)
     print(f"Found {len(users)} users to email (offset {offset})")
+    
+    success_count = 0
+    error_count = 0
+    
     for user in users:
         try:
-            send_language_learning_email(
-                user_name=user["name"],
-                user_email=user["email"],
-                user_language=user["target_language"],
-                user_level=user.get("proficiency_level", 1)
-            )
+            print(f"Sending email to {user['email']}...")
+            send_language_learning_email(user["email"])
+            success_count += 1
+            print(f"✓ Successfully sent to {user['email']}")
         except Exception as e:
-            print(f"Failed to send to {user['email']}: {e}")
+            error_count += 1
+            print(f"✗ Failed to send to {user['email']}: {e}")
+    
+    print(f"\n📊 Batch Summary:")
+    print(f"Total users: {len(users)}")
+    print(f"Successful: {success_count}")
+    print(f"Failed: {error_count}")
 
 if __name__ == "__main__":
     main() 
