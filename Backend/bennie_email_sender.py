@@ -153,7 +153,7 @@ def analyze_topic_diversity(email_history: List[Dict]) -> Tuple[List[str], bool]
     return recent_topics, should_use_new_topic
 
 # Map proficiency level (1-100) to college semester (1-8) and description
-def level_to_semester(level: int) -> (int, str):
+def level_to_semester(level: int) -> tuple[int, str]:
     """
     Map a proficiency level (1-100) to a college semester (1-8) and provide a description for prompt context.
     """

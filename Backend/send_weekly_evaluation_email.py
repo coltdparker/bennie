@@ -25,7 +25,7 @@ openai_client = OpenAI(api_key=OPENAI_API_KEY)
 logger = logging.getLogger(__name__)
 
 # --- LEVEL TO SEMESTER MAPPING ---
-def level_to_semester(level: int) -> (int, str):
+def level_to_semester(level: int) -> tuple[int, str]:
     if level <= 12:
         return 1, "Absolute beginner. Greetings, basic phrases, simple questions. Equivalent to first semester college language student."
     elif level <= 25:
@@ -59,7 +59,7 @@ def get_last_n_user_replies(user_id: int, n: int = 3) -> List[Dict]:
     return resp.data or []
 
 # --- ANALYSIS HELPERS ---
-def analyze_reply_length(replies: List[Dict]) -> (float, str):
+def analyze_reply_length(replies: List[Dict]) -> tuple[float, str]:
     if not replies:
         return 0, "No replies this week."
     avg_len = sum(len(r["content"].split()) for r in replies) / len(replies)
@@ -71,7 +71,7 @@ def analyze_reply_length(replies: List[Dict]) -> (float, str):
         feedback = "Your replies were impressively detailed! This is fantastic for your progress."
     return avg_len, feedback
 
-def estimate_reply_level(replies: List[Dict]) -> (int, int, str):
+def estimate_reply_level(replies: List[Dict]) -> tuple[int, int, str]:
     # Use OpenAI to estimate the average level of the user's replies (1-100)
     if not replies:
         return 0, 1, "No replies to evaluate."
