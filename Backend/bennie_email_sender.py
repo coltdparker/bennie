@@ -216,7 +216,13 @@ REQUIREMENTS:
 - Include 2-3 new vocabulary words appropriate for their level
 - End with an engaging question that invites a response
 - Keep tone friendly, encouraging, and conversational
-- Include signature: "Con cariño, Bennie" (Spanish) / "Avec amitié, Bennie" (French) / etc.
+- End the email with a culturally appropriate closing and Bennie's name, in the target language:
+  - Spanish: "Con cariño, Bennie"
+  - French: "Avec amitié, Bennie"
+  - Mandarin: "祝好 (Zhù hǎo), Bennie"
+  - Japanese: "ベニーより (Bennie yori)"
+  - German: "Viele Grüße, Bennie"
+  - Italian: "Con affetto, Bennie"
 - Add vocabulary definitions at the bottom after signature
 - DO NOT mention their learning goals or proficiency level in the email
 - Focus on natural conversation, not explicit teaching
