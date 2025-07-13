@@ -22,6 +22,7 @@ from new_user_email import send_welcome_email
 from apscheduler.schedulers.background import BackgroundScheduler
 from Backend.send_batch_learning_emails import main as send_batch_emails_batch
 from Backend.bennie_email_sender import send_language_learning_email
+from Backend.openai_connectivity_test import test_openai
 
 import base64
 
@@ -406,7 +407,7 @@ async def sendgrid_inbound(request: Request, secret: Optional[str] = Query(None)
             sender_email = match.group(1)
         else:
             sender_email = sender_email.strip()
-        
+            
         logger.info(f"Cleaned sender email: {sender_email}")
 
         # Find user by email
@@ -499,6 +500,9 @@ async def test_webhook():
         "webhook_url": "/api/sendgrid-inbound",
         "secret_configured": bool(SENDGRID_WEBHOOK_SECRET and SENDGRID_WEBHOOK_SECRET != "changeme")
     }
+
+# Register the /test-openai endpoint
+app.add_api_route("/test-openai", test_openai, methods=["GET"])
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))
