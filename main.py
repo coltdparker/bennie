@@ -23,6 +23,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from Backend.send_batch_learning_emails import main as send_batch_emails_batch
 from Backend.bennie_email_sender import send_language_learning_email
 from Backend.openai_connectivity_test import test_openai
+from Backend.send_weekly_evaluation_email import send_weekly_evaluation_email
 
 import base64
 import httpx
@@ -59,6 +60,24 @@ def start_scheduler():
     scheduler = BackgroundScheduler(timezone="UTC")
     # Monday, Wednesday, Friday at 8:00 UTC
     scheduler.add_job(send_batch_emails_batch, 'cron', day_of_week='mon,wed,fri', hour=8, minute=0)
+    # Saturday at 14:00 UTC (9am EST) - Weekly evaluation emails
+    def send_all_weekly_evals():
+        logger.info("Starting weekly evaluation email job...")
+        try:
+            users_resp = supabase.table("users").select("email").eq("is_active", True).eq("is_verified", True).execute()
+            if not users_resp.data:
+                logger.info("No active/verified users found for weekly evals.")
+                return
+            for user in users_resp.data:
+                email = user["email"]
+                try:
+                    send_weekly_evaluation_email(email)
+                    logger.info(f"✓ Weekly evaluation email sent to {email}")
+                except Exception as e:
+                    logger.error(f"Failed to send weekly evaluation to {email}: {e}")
+        except Exception as e:
+            logger.error(f"Weekly evaluation job failed: {e}")
+    scheduler.add_job(send_all_weekly_evals, 'cron', day_of_week='sat', hour=14, minute=0)
     scheduler.start()
 
 # Create FastAPI app
