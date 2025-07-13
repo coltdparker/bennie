@@ -451,7 +451,9 @@ async def sendgrid_inbound(request: Request, secret: Optional[str] = Query(None)
         if instant_reply:
             logger.info(f"User {user_name} has instant_reply enabled. Sending immediate response...")
             try:
-                send_language_learning_email(
+                # Use the legacy wrapper to support the old signature
+                from Backend.bennie_email_sender import send_language_learning_email_legacy
+                send_language_learning_email_legacy(
                     user_name=user_name,
                     user_email=sender_email,
                     user_language=user_language,
