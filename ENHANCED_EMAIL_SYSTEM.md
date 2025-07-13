@@ -26,6 +26,38 @@ The enhanced email system provides comprehensive user context to OpenAI's GPT-4 
 - **Level 61-80**: Complex grammar, idioms, nuanced expressions
 - **Level 81-100**: Native-like fluency, sophisticated vocabulary
 
+### 🎓 College Semester Mapping for Proficiency Levels
+
+To provide more intuitive and pedagogically sound context for the LLM, Bennie now maps user proficiency levels (1-100) to equivalent U.S. college language semesters (1-8). This mapping helps the LLM tailor its output to what a student would be expected to handle at each stage of formal language study.
+
+**Mapping Table:**
+
+| Level Range | Semester | Description |
+|-------------|----------|-------------|
+| 1-12        | 1        | Absolute beginner. Greetings, basic phrases, simple questions. |
+| 13-25       | 2        | Beginner. Simple present tense, basic questions, daily life topics. |
+| 26-37       | 3        | Lower intermediate. Past/future tense, more vocabulary, short stories. |
+| 38-50       | 4        | Intermediate. Complex sentences, opinions, short essays. |
+| 51-62       | 5        | Upper intermediate. Argumentation, abstract topics, intro to literature. |
+| 63-75       | 6        | Advanced. Advanced readings, idioms, cultural nuance. |
+| 76-87       | 7        | Very advanced. Academic/professional topics, debates, research. |
+| 88-100      | 8        | Near-native. Literature, advanced writing, slang, full fluency. |
+
+**Rationale:**
+- Most U.S. college language programs span 8 semesters (4 years) to reach near-native proficiency.
+- This mapping provides the LLM with a familiar educational framework, making it easier to adjust vocabulary, grammar, and topics to the user's true ability.
+- For example, a user at level 10 is treated as a first-semester student, while a user at level 90 is treated as an eighth-semester (senior/near-native) student.
+
+**Prompt Usage:**
+- The prompt includes a section like:
+  ```
+  SEMESTER CONTEXT:
+  - The user's proficiency level of {level}/100 is equivalent to a college language learner in semester {semester} out of 8.
+  - {semester_description}
+  - Tailor your vocabulary, grammar, and topics to what a student would be expected to handle at this semester.
+  ```
+- This ensures the LLM produces output that is neither too simple nor too advanced for the user, and aligns with real-world language learning progressions.
+
 ## System Architecture
 
 ### Core Functions

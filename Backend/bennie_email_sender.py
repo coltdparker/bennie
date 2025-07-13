@@ -152,30 +152,49 @@ def analyze_topic_diversity(email_history: List[Dict]) -> Tuple[List[str], bool]
     
     return recent_topics, should_use_new_topic
 
+# Map proficiency level (1-100) to college semester (1-8) and description
+def level_to_semester(level: int) -> (int, str):
+    """
+    Map a proficiency level (1-100) to a college semester (1-8) and provide a description for prompt context.
+    """
+    if level <= 12:
+        return 1, "Absolute beginner. Greetings, basic phrases, simple questions. Equivalent to first semester college language student."
+    elif level <= 25:
+        return 2, "Beginner. Simple present tense, basic questions, daily life topics. Equivalent to second semester."
+    elif level <= 37:
+        return 3, "Lower intermediate. Past/future tense, more vocabulary, short stories. Equivalent to third semester."
+    elif level <= 50:
+        return 4, "Intermediate. Complex sentences, opinions, short essays. Equivalent to fourth semester."
+    elif level <= 62:
+        return 5, "Upper intermediate. Argumentation, abstract topics, intro to literature. Equivalent to fifth semester."
+    elif level <= 75:
+        return 6, "Advanced. Advanced readings, idioms, cultural nuance. Equivalent to sixth semester."
+    elif level <= 87:
+        return 7, "Very advanced. Academic/professional topics, debates, research. Equivalent to seventh semester."
+    else:
+        return 8, "Near-native. Literature, advanced writing, slang, full fluency. Equivalent to eighth (final) semester."
+
 def create_enhanced_prompt(user_context: Dict, recent_topics: List[str], should_use_new_topic: bool) -> str:
     """
     Create an enhanced prompt with comprehensive user context.
-    
-    Args:
-        user_context (Dict): User profile and preferences
-        recent_topics (List[str]): Recent conversation topics
-        should_use_new_topic (bool): Whether to introduce a new topic
-        
-    Returns:
-        str: Enhanced prompt for OpenAI
     """
-    
     # Bennie's personality and purpose
     bennie_identity = """You are Bennie, a warm, enthusiastic, and encouraging AI language learning friend. You have a playful personality and love sharing your daily experiences. You're genuinely excited about helping people learn languages and you treat each user like a close friend. You're curious about their lives and always ask engaging questions to keep the conversation flowing."""
 
     # User context section
+    semester, semester_desc = level_to_semester(user_context['proficiency_level'])
     user_info = f"""
 USER CONTEXT:
 - Name: {user_context['name']}
 - Target Language: {user_context['target_language']}
-- Proficiency Level: {user_context['proficiency_level']}/100 (1=beginner, 100=native)
+- Proficiency Level: {user_context['proficiency_level']}/100
 - Learning Goal: {user_context['learning_goal']}
 - Interests: {user_context['topics_of_interest']}
+
+SEMESTER CONTEXT:
+- The user's proficiency level of {user_context['proficiency_level']}/100 is equivalent to a college language learner in semester {semester} out of 8.
+- {semester_desc}
+- Tailor your vocabulary, grammar, and topics to what a student would be expected to handle at this semester.
 """
 
     # Topic guidance
@@ -192,12 +211,7 @@ TOPIC GUIDANCE:
     requirements = f"""
 REQUIREMENTS:
 - Write entirely in {user_context['target_language']}
-- Adjust complexity for level {user_context['proficiency_level']}/100:
-  * Level 1-20: Basic vocabulary, simple sentences, lots of cognates
-  * Level 21-40: Common phrases, present tense, basic questions
-  * Level 41-60: Past/future tense, compound sentences, cultural references
-  * Level 61-80: Complex grammar, idioms, nuanced expressions
-  * Level 81-100: Native-like fluency, sophisticated vocabulary, cultural depth
+- Adjust complexity for level {user_context['proficiency_level']}/100 (see semester context above)
 - Keep message to 3-4 sentences
 - Include 2-3 new vocabulary words appropriate for their level
 - End with an engaging question that invites a response
