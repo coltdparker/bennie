@@ -78,6 +78,39 @@ def start_scheduler():
         except Exception as e:
             logger.error(f"Weekly evaluation job failed: {e}")
     scheduler.add_job(send_all_weekly_evals, 'cron', day_of_week='sat', hour=14, minute=0)
+
+    # Dev auto-eval: every 10 minutes, check instant_reply users for 3+ replies since last eval
+    def dev_auto_eval():
+        logger.info("Running dev auto-eval check...")
+        try:
+            users_resp = supabase.table("users").select("id,email").eq("instant_reply", True).execute()
+            if not users_resp.data:
+                logger.info("No instant_reply users found for dev auto-eval.")
+                return
+            for user in users_resp.data:
+                user_id = user["id"]
+                email = user["email"]
+                # Find last evaluation email
+                evals_resp = supabase.table("email_history").select("created_at").eq("user_id", user_id).eq("is_evaluation", True).order("created_at", desc=True).limit(1).execute()
+                last_eval_time = None
+                if evals_resp.data and len(evals_resp.data) > 0:
+                    last_eval_time = evals_resp.data[0]["created_at"]
+                # Count user replies since last eval
+                replies_query = supabase.table("email_history").select("id").eq("user_id", user_id).eq("is_from_bennie", False)
+                if last_eval_time:
+                    replies_query = replies_query.gte("created_at", last_eval_time)
+                replies_resp = replies_query.execute()
+                reply_count = len(replies_resp.data) if replies_resp.data else 0
+                if reply_count >= 3:
+                    try:
+                        send_weekly_evaluation_email(email)
+                        logger.info(f"✓ Dev auto-eval sent to {email} (replies since last eval: {reply_count})")
+                    except Exception as e:
+                        logger.error(f"Dev auto-eval failed for {email}: {e}")
+        except Exception as e:
+            logger.error(f"Dev auto-eval job failed: {e}")
+    scheduler.add_job(dev_auto_eval, 'interval', minutes=10)
+
     scheduler.start()
 
 # Create FastAPI app
@@ -465,6 +498,28 @@ async def sendgrid_inbound(request: Request, secret: Optional[str] = Query(None)
         except Exception as db_exc:
             logger.error(f"Exception during Supabase insert: {db_exc}")
             return {"success": False, "error": f"Supabase insert exception: {str(db_exc)}"}
+
+        # DEV AUTO-EVAL: If instant_reply, check for 3+ replies since last eval and trigger eval if needed
+        if instant_reply:
+            try:
+                # Find last evaluation email
+                evals_resp = supabase.table("email_history").select("created_at").eq("user_id", user_id).eq("is_evaluation", True).order("created_at", desc=True).limit(1).execute()
+                last_eval_time = None
+                if evals_resp.data and len(evals_resp.data) > 0:
+                    last_eval_time = evals_resp.data[0]["created_at"]
+                # Count user replies since last eval
+                replies_query = supabase.table("email_history").select("id").eq("user_id", user_id).eq("is_from_bennie", False)
+                if last_eval_time:
+                    replies_query = replies_query.gte("created_at", last_eval_time)
+                replies_resp = replies_query.execute()
+                reply_count = len(replies_resp.data) if replies_resp.data else 0
+                logger.info(f"DEV AUTO-EVAL: User {user_name} ({sender_email}) has {reply_count} replies since last eval.")
+                if reply_count >= 3:
+                    from Backend.send_weekly_evaluation_email import send_weekly_evaluation_email
+                    send_weekly_evaluation_email(sender_email)
+                    logger.info(f"✓ DEV AUTO-EVAL: Evaluation email sent to {sender_email}")
+            except Exception as e:
+                logger.error(f"DEV AUTO-EVAL: Failed to check/send evaluation for {sender_email}: {e}")
 
         # If instant_reply is enabled, send a language learning email immediately
         if instant_reply:

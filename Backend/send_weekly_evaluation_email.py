@@ -146,7 +146,7 @@ Vocabulary recap:
 """
 
 # --- SEND EMAIL ---
-def send_evaluation_email(user_email: str, subject: str, html_content: str, plain_content: str):
+def send_evaluation_email(user_email: str, subject: str, html_content: str, plain_content: str, user_id: int = None):
     message = Mail(
         from_email='Bennie@itsbennie.com',
         to_emails=user_email,
@@ -158,6 +158,17 @@ def send_evaluation_email(user_email: str, subject: str, html_content: str, plai
     response = sg.send(message)
     if response.status_code == 202:
         print(f"✓ Evaluation email sent to {user_email}")
+        # Log to email_history with is_evaluation=True if user_id is provided
+        if user_id is not None:
+            try:
+                supabase.table("email_history").insert({
+                    "user_id": user_id,
+                    "content": plain_content,
+                    "is_from_bennie": True,
+                    "is_evaluation": True
+                }).execute()
+            except Exception as e:
+                print(f"⚠️ Failed to log evaluation email to history: {e}")
     else:
         print(f"⚠️ Failed to send email: {response.status_code}")
         print(response.body)
@@ -183,7 +194,7 @@ def send_weekly_evaluation_email(user_email: str):
     )
     email_text = resp.choices[0].message.content
     html_content = f"<html><body style='font-family: Arial, sans-serif; line-height: 1.6;'>{email_text.replace(chr(10), '<br>')}</body></html>"
-    send_evaluation_email(user_email, "Your Weekly Language Progress with Bennie!", html_content, email_text)
+    send_evaluation_email(user_email, "Your Weekly Language Progress with Bennie!", html_content, email_text, user_id=user_id)
 
 # --- CLI ENTRY POINT ---
 def main():

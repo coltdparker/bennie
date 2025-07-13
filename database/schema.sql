@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS public.email_history (
   is_from_bennie boolean not null,
   difficulty_level integer null,
   created_at timestamp with time zone not null default now(),
+  is_evaluation boolean not null default false, -- Marks if this is an evaluation email
   constraint email_history_pkey primary key (id),
   constraint email_history_user_id_fkey foreign KEY (user_id) references users (id)
 ) TABLESPACE pg_default;
