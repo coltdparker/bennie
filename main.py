@@ -19,11 +19,8 @@ from typing import Optional
 import sys
 sys.path.append('./Backend')
 from new_user_email import send_welcome_email
-from apscheduler.schedulers.background import BackgroundScheduler
-from Backend.send_batch_learning_emails import main as send_batch_emails_batch
 from Backend.bennie_email_sender import send_language_learning_email
 from Backend.openai_connectivity_test import test_openai
-from Backend.send_weekly_evaluation_email import send_weekly_evaluation_email
 
 import base64
 import httpx
@@ -56,62 +53,8 @@ def generate_verification_token() -> str:
     """Generate a secure verification token for onboarding."""
     return secrets.token_urlsafe(32)
 
-def start_scheduler():
-    scheduler = BackgroundScheduler(timezone="UTC")
-    # Monday, Wednesday, Friday at 8:00 UTC
-    scheduler.add_job(send_batch_emails_batch, 'cron', day_of_week='mon,wed,fri', hour=8, minute=0)
-    # Saturday at 14:00 UTC (9am EST) - Weekly evaluation emails
-    def send_all_weekly_evals():
-        logger.info("Starting weekly evaluation email job...")
-        try:
-            users_resp = supabase.table("users").select("email").eq("is_active", True).eq("is_verified", True).execute()
-            if not users_resp.data:
-                logger.info("No active/verified users found for weekly evals.")
-                return
-            for user in users_resp.data:
-                email = user["email"]
-                try:
-                    send_weekly_evaluation_email(email)
-                    logger.info(f"✓ Weekly evaluation email sent to {email}")
-                except Exception as e:
-                    logger.error(f"Failed to send weekly evaluation to {email}: {e}")
-        except Exception as e:
-            logger.error(f"Weekly evaluation job failed: {e}")
-    scheduler.add_job(send_all_weekly_evals, 'cron', day_of_week='sat', hour=14, minute=0)
-
-    # Dev auto-eval: every 10 minutes, check instant_reply users for 3+ replies since last eval
-    def dev_auto_eval():
-        logger.info("Running dev auto-eval check...")
-        try:
-            users_resp = supabase.table("users").select("id,email").eq("instant_reply", True).execute()
-            if not users_resp.data:
-                logger.info("No instant_reply users found for dev auto-eval.")
-                return
-            for user in users_resp.data:
-                user_id = user["id"]
-                email = user["email"]
-                # Find last evaluation email
-                evals_resp = supabase.table("email_history").select("created_at").eq("user_id", user_id).eq("is_evaluation", True).order("created_at", desc=True).limit(1).execute()
-                last_eval_time = None
-                if evals_resp.data and len(evals_resp.data) > 0:
-                    last_eval_time = evals_resp.data[0]["created_at"]
-                # Count user replies since last eval
-                replies_query = supabase.table("email_history").select("id").eq("user_id", user_id).eq("is_from_bennie", False)
-                if last_eval_time:
-                    replies_query = replies_query.gte("created_at", last_eval_time)
-                replies_resp = replies_query.execute()
-                reply_count = len(replies_resp.data) if replies_resp.data else 0
-                if reply_count >= 3:
-                    try:
-                        send_weekly_evaluation_email(email)
-                        logger.info(f"✓ Dev auto-eval sent to {email} (replies since last eval: {reply_count})")
-                    except Exception as e:
-                        logger.error(f"Dev auto-eval failed for {email}: {e}")
-        except Exception as e:
-            logger.error(f"Dev auto-eval job failed: {e}")
-    scheduler.add_job(dev_auto_eval, 'interval', minutes=10)
-
-    scheduler.start()
+# Note: Scheduler has been moved to Railway cron jobs for reliability
+# See railway.json for cron job configurations
 
 # Create FastAPI app
 app = FastAPI(
@@ -120,8 +63,7 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Start the scheduler when the app starts
-start_scheduler()
+# Note: Scheduler is now handled by Railway cron jobs
 
 # Add CORS middleware
 app.add_middleware(
@@ -585,6 +527,54 @@ def test_httpbin():
         return {"success": True, "status_code": r.status_code, "json": r.json()}
     except Exception as e:
         return {"success": False, "error": str(e)}
+
+@app.post("/api/trigger-dev-auto-eval")
+async def trigger_dev_auto_eval():
+    """Trigger dev auto-evaluation for instant_reply users."""
+    try:
+        logger.info("Running dev auto-eval check...")
+        users_resp = supabase.table("users").select("id,email").eq("instant_reply", True).execute()
+        
+        if not users_resp.data:
+            logger.info("No instant_reply users found for dev auto-eval.")
+            return {"success": True, "message": "No instant_reply users found"}
+        
+        eval_count = 0
+        for user in users_resp.data:
+            user_id = user["id"]
+            email = user["email"]
+            
+            # Find last evaluation email
+            evals_resp = supabase.table("email_history").select("created_at").eq("user_id", user_id).eq("is_evaluation", True).order("created_at", desc=True).limit(1).execute()
+            last_eval_time = None
+            if evals_resp.data and len(evals_resp.data) > 0:
+                last_eval_time = evals_resp.data[0]["created_at"]
+            
+            # Count user replies since last eval
+            replies_query = supabase.table("email_history").select("id").eq("user_id", user_id).eq("is_from_bennie", False)
+            if last_eval_time:
+                replies_query = replies_query.gte("created_at", last_eval_time)
+            replies_resp = replies_query.execute()
+            reply_count = len(replies_resp.data) if replies_resp.data else 0
+            
+            if reply_count >= 3:
+                try:
+                    from Backend.send_weekly_evaluation_email import send_weekly_evaluation_email
+                    send_weekly_evaluation_email(email)
+                    eval_count += 1
+                    logger.info(f"✓ Dev auto-eval sent to {email} (replies since last eval: {reply_count})")
+                except Exception as e:
+                    logger.error(f"Dev auto-eval failed for {email}: {e}")
+        
+        return {
+            "success": True, 
+            "message": f"Dev auto-eval completed. {eval_count} evaluations sent.",
+            "evaluations_sent": eval_count
+        }
+        
+    except Exception as e:
+        logger.error(f"Dev auto-eval job failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Dev auto-eval failed: {str(e)}")
 
 # Register the /test-openai endpoint
 app.add_api_route("/test-openai", test_openai, methods=["GET"])
