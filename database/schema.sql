@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS public.users (
   password_hash text null,
   topics_of_interest text null default ''::text,
   learning_goal text null,
-  target_proficiency integer null default 50,
+  target_proficiency integer null default 1,
   email_schedule jsonb null,
   is_active boolean null default true,
   is_verified boolean null default false,
