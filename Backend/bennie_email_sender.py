@@ -117,40 +117,137 @@ def get_user_context(user_email: str) -> Dict:
         logger.error(f"Error fetching user context: {e}")
         raise
 
-def analyze_topic_diversity(email_history: List[Dict]) -> Tuple[List[str], bool]:
+def analyze_topic_diversity(email_history: List[Dict]) -> Tuple[List[str], bool, List[str]]:
     """
     Analyze email history to determine topic diversity and suggest new vs repeated topics.
+    Enhanced version that better tracks topics and enforces variety.
     
     Args:
         email_history (List[Dict]): List of recent email history
         
     Returns:
-        Tuple[List[str], bool]: (recent_topics, should_use_new_topic)
+        Tuple[List[str], bool, List[str]]: (recent_topics, should_use_new_topic, available_interests)
     """
-    # Extract topics from recent Bennie emails (last 7 messages)
+    # Extract topics from recent Bennie emails (last 10 messages)
     recent_bennie_emails = [
         email["content"] for email in email_history 
         if email["is_from_bennie"] and email["content"]
-    ][:7]
+    ][:10]
     
-    # Simple topic extraction (this could be enhanced with NLP)
+    # Better topic extraction using keyword detection
     recent_topics = []
+    topic_keywords = {
+        'food': ['comida', 'cocinar', 'restaurante', 'cena', 'almuerzo', 'desayuno', 'manger', 'cuisine', 'dîner', 'déjeuner', 'petit-déjeuner', '食物', '做饭', '餐厅', '晚餐', '午餐', '早餐', '食べ物', '料理', 'レストラン', '夕食', '昼食', '朝食', 'Essen', 'kochen', 'Restaurant', 'Abendessen', 'Mittagessen', 'Frühstück', 'cibo', 'cucinare', 'ristorante', 'cena', 'pranzo', 'colazione'],
+        'travel': ['viaje', 'vacaciones', 'turismo', 'ciudad', 'país', 'voyage', 'vacances', 'tourisme', 'ville', 'pays', '旅行', '假期', '旅游', '城市', '国家', '旅行', '休暇', '観光', '都市', '国', 'Reise', 'Urlaub', 'Tourismus', 'Stadt', 'Land', 'viaggio', 'vacanze', 'turismo', 'città', 'paese'],
+        'work': ['trabajo', 'oficina', 'proyecto', 'reunión', 'travail', 'bureau', 'projet', 'réunion', '工作', '办公室', '项目', '会议', '仕事', 'オフィス', 'プロジェクト', '会議', 'Arbeit', 'Büro', 'Projekt', 'Meeting', 'lavoro', 'ufficio', 'progetto', 'riunione'],
+        'family': ['familia', 'hijos', 'padres', 'hermanos', 'famille', 'enfants', 'parents', 'frères', '家庭', '孩子', '父母', '兄弟', '家族', '子供', '親', '兄弟', 'Familie', 'Kinder', 'Eltern', 'Geschwister', 'famiglia', 'figli', 'genitori', 'fratelli'],
+        'hobbies': ['hobby', 'deportes', 'música', 'arte', 'lectura', 'passe-temps', 'sports', 'musique', 'art', 'lecture', '爱好', '运动', '音乐', '艺术', '阅读', '趣味', 'スポーツ', '音楽', '芸術', '読書', 'Hobby', 'Sport', 'Musik', 'Kunst', 'Lesen', 'hobby', 'sport', 'musica', 'arte', 'lettura'],
+        'technology': ['tecnología', 'computadora', 'internet', 'aplicación', 'technologie', 'ordinateur', 'internet', 'application', '技术', '电脑', '互联网', '应用程序', '技術', 'コンピューター', 'インターネット', 'アプリケーション', 'Technologie', 'Computer', 'Internet', 'Anwendung', 'tecnologia', 'computer', 'internet', 'applicazione'],
+        'weather': ['clima', 'lluvia', 'sol', 'frío', 'calor', 'temps', 'pluie', 'soleil', 'froid', 'chaud', '天气', '雨', '太阳', '冷', '热', '天気', '雨', '太陽', '寒い', '暑い', 'Wetter', 'Regen', 'Sonne', 'kalt', 'warm', 'tempo', 'pioggia', 'sole', 'freddo', 'caldo']
+    }
+    
     for email in recent_bennie_emails:
-        # Extract potential topics from email content
-        # This is a simplified approach - could be enhanced with better NLP
-        lines = email.lower().split('\n')
-        for line in lines:
-            if any(keyword in line for keyword in ['today', 'yesterday', 'weekend', 'morning', 'evening', 'afternoon']):
-                # Extract the main activity/topic from the line
-                words = line.split()
-                if len(words) > 3:
-                    recent_topics.append(' '.join(words[:5]))  # First 5 words as topic
+        email_lower = email.lower()
+        for topic, keywords in topic_keywords.items():
+            if any(keyword in email_lower for keyword in keywords):
+                recent_topics.append(topic)
                 break
     
-    # Decide whether to use new topic (50% chance) or repeat an old one
-    should_use_new_topic = random.random() < 0.5
+    # Get user interests from the most recent email context
+    user_interests = []
+    if email_history:
+        # Try to extract interests from the most recent user context
+        # This is a simplified approach - in practice, you'd get this from user profile
+        pass
     
-    return recent_topics, should_use_new_topic
+    # Decide whether to use new topic (70% chance for variety, 30% to repeat)
+    should_use_new_topic = random.random() < 0.7
+    
+    # If we have too many recent topics of the same type, force new topic
+    if len(recent_topics) >= 3:
+        topic_counts = {}
+        for topic in recent_topics[-3:]:  # Last 3 topics
+            topic_counts[topic] = topic_counts.get(topic, 0) + 1
+        if any(count >= 2 for count in topic_counts.values()):
+            should_use_new_topic = True
+    
+    return recent_topics, should_use_new_topic, user_interests
+
+def parse_user_interests(interests_string: str) -> List[str]:
+    """
+    Parse user interests string into a list of distinct topics.
+    Handles various formats: comma-separated, semicolon-separated, etc.
+    """
+    if not interests_string:
+        return []
+    
+    # Split by common separators and clean up
+    separators = [',', ';', '|', '\n']
+    interests = [interests_string]
+    
+    for sep in separators:
+        new_interests = []
+        for interest in interests:
+            new_interests.extend([i.strip() for i in interest.split(sep) if i.strip()])
+        interests = new_interests
+    
+    # Remove duplicates and empty strings
+    unique_interests = list(set([interest.lower() for interest in interests if interest]))
+    
+    # Map common variations to standard topics
+    topic_mapping = {
+        'food': ['food', 'cooking', 'cuisine', 'restaurant', 'dining', 'cooking', 'baking'],
+        'travel': ['travel', 'tourism', 'vacation', 'trip', 'adventure', 'exploring'],
+        'work': ['work', 'job', 'career', 'business', 'office', 'profession'],
+        'family': ['family', 'kids', 'children', 'parents', 'siblings', 'home'],
+        'hobbies': ['hobby', 'hobbies', 'sports', 'music', 'art', 'reading', 'gaming', 'photography'],
+        'technology': ['technology', 'tech', 'computer', 'internet', 'software', 'gadgets'],
+        'weather': ['weather', 'climate', 'outdoors', 'nature', 'environment'],
+        'culture': ['culture', 'history', 'traditions', 'customs', 'heritage'],
+        'health': ['health', 'fitness', 'exercise', 'wellness', 'medical'],
+        'education': ['education', 'learning', 'study', 'school', 'university', 'courses']
+    }
+    
+    # Map interests to standard topics
+    mapped_interests = []
+    for interest in unique_interests:
+        for topic, keywords in topic_mapping.items():
+            if any(keyword in interest for keyword in keywords):
+                mapped_interests.append(topic)
+                break
+        else:
+            # If no mapping found, keep the original interest
+            mapped_interests.append(interest)
+    
+    return list(set(mapped_interests))
+
+def get_next_topic(user_interests: List[str], recent_topics: List[str], should_use_new_topic: bool) -> str:
+    """
+    Determine the next topic to use based on user interests and recent history.
+    """
+    if not user_interests:
+        # Fallback topics if no interests specified
+        fallback_topics = ['daily life', 'weather', 'hobbies', 'food', 'work', 'family']
+        return random.choice(fallback_topics)
+    
+    if should_use_new_topic:
+        # Choose a topic from interests that hasn't been used recently
+        available_topics = [topic for topic in user_interests if topic not in recent_topics[-3:]]
+        if available_topics:
+            return random.choice(available_topics)
+        else:
+            # If all interests have been used recently, choose the least recent one
+            for topic in user_interests:
+                if topic not in recent_topics[-2:]:
+                    return topic
+            # If everything is too recent, force a different angle
+            return random.choice(user_interests)
+    else:
+        # Repeat a topic but with a different angle
+        if recent_topics:
+            return random.choice(recent_topics[-2:])  # Choose from last 2 topics
+        else:
+            return random.choice(user_interests)
 
 # Map proficiency level (1-100) to college semester (1-8) and description
 def level_to_semester(level: int) -> tuple[int, str]:
@@ -174,9 +271,64 @@ def level_to_semester(level: int) -> tuple[int, str]:
     else:
         return 8, "Near-native. Literature, advanced writing, slang, full fluency. Equivalent to eighth (final) semester."
 
-def create_enhanced_prompt(user_context: Dict, recent_topics: List[str], should_use_new_topic: bool) -> str:
+def get_vocabulary_guidance(proficiency_level: int, target_language: str) -> str:
     """
-    Create an enhanced prompt with comprehensive user context.
+    Generate specific vocabulary guidance based on proficiency level.
+    This provides concrete examples without needing large vocab lists.
+    """
+    if proficiency_level <= 12:
+        return f"""
+VOCABULARY GUIDANCE FOR ABSOLUTE BEGINNER (Level {proficiency_level}/100):
+- Use only the most basic words: greetings, simple verbs (ser/estar, tener, hacer), basic nouns (casa, trabajo, familia)
+- Avoid complex vocabulary, idioms, or advanced grammar
+- Stick to present tense only
+- Use simple sentence structures: Subject + Verb + Object
+- Maximum 1-2 new vocabulary words per email
+- Focus on survival vocabulary: basic needs, simple questions, everyday objects
+"""
+    elif proficiency_level <= 25:
+        return f"""
+VOCABULARY GUIDANCE FOR BEGINNER (Level {proficiency_level}/100):
+- Use basic everyday vocabulary: daily activities, common objects, simple emotions
+- Include some basic adjectives and adverbs
+- Can use simple past tense occasionally
+- Avoid complex verb conjugations or subjunctive mood
+- Maximum 2-3 new vocabulary words per email
+- Focus on practical, frequently-used words
+"""
+    elif proficiency_level <= 37:
+        return f"""
+VOCABULARY GUIDANCE FOR LOWER INTERMEDIATE (Level {proficiency_level}/100):
+- Use intermediate vocabulary: hobbies, work-related terms, cultural topics
+- Can include some idiomatic expressions (but explain them)
+- Use past and future tenses
+- Include some compound sentences
+- Maximum 3-4 new vocabulary words per email
+- Can introduce abstract concepts but keep them simple
+"""
+    elif proficiency_level <= 50:
+        return f"""
+VOCABULARY GUIDANCE FOR INTERMEDIATE (Level {proficiency_level}/100):
+- Use intermediate-advanced vocabulary: opinions, preferences, experiences
+- Can include more complex sentence structures
+- Use subjunctive mood occasionally
+- Include cultural references and idioms
+- Maximum 4-5 new vocabulary words per email
+- Can discuss abstract topics but provide context
+"""
+    else:
+        return f"""
+VOCABULARY GUIDANCE FOR ADVANCED (Level {proficiency_level}/100):
+- Use advanced vocabulary: complex topics, nuanced expressions, cultural depth
+- Can include sophisticated grammar structures
+- Use idioms and cultural references freely
+- Maximum 5-6 new vocabulary words per email
+- Can discuss abstract, complex topics
+"""
+
+def create_enhanced_prompt(user_context: Dict, recent_topics: List[str], should_use_new_topic: bool, next_topic: str = None) -> str:
+    """
+    Create an enhanced prompt with comprehensive user context and better topic/vocabulary control.
     """
     # Bennie's personality and purpose
     bennie_identity = """You are Bennie, a warm, enthusiastic, and encouraging AI language learning friend. You have a playful personality and love sharing your daily experiences. You're genuinely excited about helping people learn languages and you treat each user like a close friend. You're curious about their lives and always ask engaging questions to keep the conversation flowing."""
@@ -197,21 +349,29 @@ SEMESTER CONTEXT:
 - Tailor your vocabulary, grammar, and topics to what a student would be expected to handle at this semester.
 """
 
-    # Topic guidance
+    # Enhanced topic guidance with better variety control
     topic_guidance = f"""
 TOPIC GUIDANCE:
 - Recent topics discussed: {', '.join(recent_topics) if recent_topics else 'None yet'}
 - Should introduce new topic: {'Yes' if should_use_new_topic else 'No'}
-- If new topic: Choose something related to their interests: {user_context['topics_of_interest']}
-- If repeating topic: Choose a different angle or situation from their interests
-- Avoid repeating the exact same topic within 7 messages
+- SELECTED TOPIC FOR THIS EMAIL: {next_topic if next_topic else 'Choose from interests'}
+- Topic variety rule: If the same topic appears in 2+ recent emails, you MUST choose a different topic
+- Available interests to choose from: {user_context['topics_of_interest']}
+- If new topic: Chose a random topic that you are interested in!  Be creative!  Bennie is very adventurous and has a wide range of interesting experiences.  Be creative and make something fun and unique up that will expand our user's vocabulary!
+- If repeating topic: Choose a completely different angle or situation
+- Topic rotation: Cycle through their interests evenly over time
+- Avoid topic repetition: Don't discuss the same specific topic within 5 emails
+- IMPORTANT: Focus your email content around the selected topic: {next_topic}
 """
+
+    # Enhanced vocabulary guidance
+    vocab_guidance = get_vocabulary_guidance(user_context['proficiency_level'], user_context['target_language'])
 
     # Language and content requirements
     requirements = f"""
 REQUIREMENTS:
 - Write entirely in {user_context['target_language']}
-- Adjust complexity for level {user_context['proficiency_level']}/100 (see semester context above)
+- {vocab_guidance}
 - Keep message to 3-4 sentences
 - Include 2-3 new vocabulary words appropriate for their level
 - End with an engaging question that invites a response
@@ -226,6 +386,7 @@ REQUIREMENTS:
 - Add vocabulary definitions at the bottom after signature
 - DO NOT mention their learning goals or proficiency level in the email
 - Focus on natural conversation, not explicit teaching
+- IMPORTANT: Use vocabulary that matches their exact level - don't overestimate their abilities
 """
 
     # Combine all sections
@@ -234,6 +395,8 @@ REQUIREMENTS:
 {user_info}
 
 {topic_guidance}
+
+{vocab_guidance}
 
 {requirements}
 
@@ -279,13 +442,21 @@ def send_language_learning_email(user_email: str):
         logger.info("Fetching user context...")
         user_context = get_user_context(user_email)
         
-        # Analyze topic diversity
+        # Analyze topic diversity and get user interests
         logger.info("Analyzing topic diversity...")
-        recent_topics, should_use_new_topic = analyze_topic_diversity(user_context["email_history"])
+        recent_topics, should_use_new_topic, _ = analyze_topic_diversity(user_context["email_history"])
+        
+        # Parse user interests for better topic management
+        logger.info("Parsing user interests...")
+        user_interests = parse_user_interests(user_context['topics_of_interest'])
+        
+        # Get the next topic to use
+        next_topic = get_next_topic(user_interests, recent_topics, should_use_new_topic)
+        logger.info(f"Selected topic: {next_topic}")
         
         # Create enhanced prompt
         logger.info("Creating enhanced prompt...")
-        enhanced_prompt = create_enhanced_prompt(user_context, recent_topics, should_use_new_topic)
+        enhanced_prompt = create_enhanced_prompt(user_context, recent_topics, should_use_new_topic, next_topic)
         
         # Log before OpenAI client initialization
         import openai as openai_module

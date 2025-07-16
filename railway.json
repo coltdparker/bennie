@@ -11,8 +11,40 @@
     "restartPolicyMaxRetries": 10
   },
   "cron": {
-    "batch-emails": {
-      "schedule": "0 8 * * 1,3,5",
+    "batch-emails-6am": {
+      "schedule": "0 6 * * *",
+      "command": "python Backend/send_batch_learning_emails.py"
+    },
+    "batch-emails-8am": {
+      "schedule": "0 8 * * *",
+      "command": "python Backend/send_batch_learning_emails.py"
+    },
+    "batch-emails-10am": {
+      "schedule": "0 10 * * *",
+      "command": "python Backend/send_batch_learning_emails.py"
+    },
+    "batch-emails-12pm": {
+      "schedule": "0 12 * * *",
+      "command": "python Backend/send_batch_learning_emails.py"
+    },
+    "batch-emails-2pm": {
+      "schedule": "0 14 * * *",
+      "command": "python Backend/send_batch_learning_emails.py"
+    },
+    "batch-emails-4pm": {
+      "schedule": "0 16 * * *",
+      "command": "python Backend/send_batch_learning_emails.py"
+    },
+    "batch-emails-6pm": {
+      "schedule": "0 18 * * *",
+      "command": "python Backend/send_batch_learning_emails.py"
+    },
+    "batch-emails-8pm": {
+      "schedule": "0 20 * * *",
+      "command": "python Backend/send_batch_learning_emails.py"
+    },
+    "batch-emails-10pm": {
+      "schedule": "0 22 * * *",
       "command": "python Backend/send_batch_learning_emails.py"
     },
     "weekly-evaluations": {
