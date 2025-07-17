@@ -220,8 +220,20 @@ function showSuccess() {
         }
     }
     const emailText = `It's great getting to know your goals, ${name}. Can't wait to chat!<br><br>${exampleLine}`;
-    document.getElementById('bennieEmailContent').innerHTML = emailText;
-    document.getElementById('bennieEmailSignature').innerHTML = 'Your pal,<br>Bennie';
+    const emailContentDiv = document.getElementById('bennieEmailContent');
+    const emailPlaceholder = document.getElementById('bennieEmailPlaceholder');
+    if (emailContentDiv) {
+        if (emailPlaceholder) emailPlaceholder.remove();
+        emailContentDiv.innerHTML = emailText;
+    } else {
+        console.error('Could not find bennieEmailContent div!');
+    }
+    const emailSignatureDiv = document.getElementById('bennieEmailSignature');
+    if (emailSignatureDiv) {
+        emailSignatureDiv.innerHTML = 'Your pal,<br>Bennie';
+    } else {
+        console.error('Could not find bennieEmailSignature div!');
+    }
 }
 
 // Add spinning animation
