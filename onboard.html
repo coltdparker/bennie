@@ -277,15 +277,38 @@
                     </div>
                 </div>
 
-                <!-- Learning Goals Section -->
-                <div class="form-section">
+                <!-- Learning Goal Slider Section -->
+                <div class="learning-goal-slider">
                     <h2 class="form-title">What's your learning goal?</h2>
+                    <p class="skill-description">Where do you see yourself in your <span id="userLanguage5">language</span> learning journey?</p>
+                    <div class="slider-container">
+                        <div class="slider-track">
+                            <div class="slider-fill" id="sliderFill"></div>
+                            <div class="slider-thumb" id="sliderThumb"></div>
+                        </div>
+                        <div class="slider-tooltip" id="sliderTooltip">
+                            <div class="tooltip-title" id="tooltipTitle">Level 1 - Basics</div>
+                            <div class="tooltip-description" id="tooltipDescription">Great for travel and basic conversations!</div>
+                        </div>
+                        <div class="slider-ticks">
+                            <div class="slider-tick" data-level="1"></div>
+                            <div class="slider-tick" data-level="2"></div>
+                            <div class="slider-tick" data-level="3"></div>
+                            <div class="slider-tick" data-level="4"></div>
+                            <div class="slider-tick" data-level="5"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Motivation Section -->
+                <div class="form-section">
+                    <h2 class="form-title">Where's your motivation to learn <span id="userLanguage6">your language</span> coming from?</h2>
                     <div class="form-group">
-                        <label for="learningGoal" class="form-label">Tell me why you want to learn <span id="userLanguage4">your language</span> and what you hope to achieve:</label>
+                        <label for="learningGoal" class="form-label">Tell me what's driving you to learn <span id="userLanguage7">your language</span>:</label>
                         <textarea 
                             id="learningGoal" 
                             class="form-textarea" 
-                            placeholder="For example: I want to travel to Spain and have conversations with locals, or I need it for work to communicate with international clients..."
+                            placeholder="For example: I want to travel to [country] and have conversations with locals, or I need it for work to communicate with international clients..."
                             maxlength="600"
                         ></textarea>
                         <div class="char-count"><span id="charCount">0</span>/600 characters</div>
@@ -323,7 +346,17 @@
             <div class="success-popup">
                 <div class="success-emoji">🎉</div>
                 <h2 class="success-title">You're all set up!</h2>
-                <p class="success-message">Can't wait to chat!<br>Your pal, Bennie</p>
+                <div class="email-content">
+                    <div class="email-greeting" id="emailGreeting">
+                        It's great getting to know your goals, <span id="successUserName">Friend</span>. Can't wait to chat!
+                    </div>
+                    <div class="email-greeting" id="emailMotivation">
+                        I'll do my best to get you ready for casual conversation!
+                    </div>
+                    <div class="email-signature">
+                        Your pal,<br>Bennie
+                    </div>
+                </div>
                 <a href="/" class="home-link">Return to homepage</a>
             </div>
         </div>

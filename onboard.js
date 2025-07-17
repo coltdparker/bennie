@@ -23,6 +23,105 @@ const submitButton = document.getElementById('submitButton');
 const successOverlay = document.getElementById('successOverlay');
 const charCount = document.getElementById('charCount');
 
+// Country mapping for language
+const languageCountryMap = {
+    spanish: 'Spain',
+    french: 'France',
+    chinese: 'China',
+    japanese: 'Japan',
+    german: 'Germany',
+    italian: 'Italy',
+    portuguese: 'Portugal',
+    russian: 'Russia',
+    korean: 'South Korea',
+    arabic: 'Egypt',
+    hindi: 'India',
+    // Add more as needed
+};
+
+const sliderLevels = [
+    {
+        title: 'Level 1 - Basics',
+        desc: 'Great for travel and basic conversations!'
+    },
+    {
+        title: 'Level 2 - Social',
+        desc: 'I want to chat with friends and make small talk.'
+    },
+    {
+        title: 'Level 3 - Confident',
+        desc: 'I want to handle daily life, work, and social situations.'
+    },
+    {
+        title: 'Level 4 - Advanced',
+        desc: 'I want to discuss complex topics and understand media.'
+    },
+    {
+        title: 'Level 5 - Fluent',
+        desc: 'I\'m in it for the long haul and want native level fluency!'
+    }
+];
+
+let selectedSliderLevel = 1;
+
+function setupSlider() {
+    const sliderThumb = document.getElementById('sliderThumb');
+    const sliderFill = document.getElementById('sliderFill');
+    const sliderTooltip = document.getElementById('sliderTooltip');
+    const tooltipTitle = document.getElementById('tooltipTitle');
+    const tooltipDescription = document.getElementById('tooltipDescription');
+    const sliderTicks = document.querySelectorAll('.slider-tick');
+
+    function updateSlider(level) {
+        selectedSliderLevel = level;
+        const percent = (level - 1) / 4 * 100;
+        sliderThumb.style.left = percent + '%';
+        sliderFill.style.width = percent + '%';
+        sliderTooltip.style.left = percent + '%';
+        tooltipTitle.textContent = sliderLevels[level - 1].title;
+        tooltipDescription.textContent = sliderLevels[level - 1].desc;
+        sliderTooltip.classList.add('show');
+        sliderTicks.forEach((tick, idx) => {
+            tick.classList.toggle('active', idx === level - 1);
+        });
+    }
+
+    sliderTicks.forEach((tick, idx) => {
+        tick.addEventListener('click', () => updateSlider(idx + 1));
+    });
+    sliderThumb.addEventListener('mousedown', startDrag);
+    sliderThumb.addEventListener('touchstart', startDrag);
+    function startDrag(e) {
+        e.preventDefault();
+        document.addEventListener('mousemove', onDrag);
+        document.addEventListener('mouseup', stopDrag);
+        document.addEventListener('touchmove', onDrag);
+        document.addEventListener('touchend', stopDrag);
+    }
+    function onDrag(e) {
+        let clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const rect = sliderThumb.parentElement.getBoundingClientRect();
+        let percent = ((clientX - rect.left) / rect.width) * 100;
+        percent = Math.max(0, Math.min(100, percent));
+        let level = Math.round(percent / 25);
+        level = Math.max(1, Math.min(5, level + 1));
+        updateSlider(level);
+    }
+    function stopDrag() {
+        document.removeEventListener('mousemove', onDrag);
+        document.removeEventListener('mouseup', stopDrag);
+        document.removeEventListener('touchmove', onDrag);
+        document.removeEventListener('touchend', stopDrag);
+    }
+    updateSlider(1);
+}
+
+function updateCountryPlaceholder() {
+    const lang = (userData.target_language || '').toLowerCase();
+    const country = languageCountryMap[lang] || 'the country';
+    document.getElementById('learningGoal').placeholder = `For example: I want to travel to ${country} and have conversations with locals, or I need it for work to communicate with international clients...`;
+}
+
 // User data
 let userData = {};
 let userToken = '';
@@ -39,6 +138,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Fetch user data from backend
     fetchUserData();
+    setupSlider();
 });
 
 async function fetchUserData() {
@@ -71,7 +171,9 @@ async function fetchUserData() {
 
 function updateUserInfo() {
     document.querySelectorAll('#userName').forEach(el => el.textContent = userData.name);
-    document.querySelectorAll('#userLanguage, #userLanguage2, #userLanguage3, #userLanguage4').forEach(el => el.textContent = userData.target_language);
+    document.querySelectorAll('#userLanguage, #userLanguage2, #userLanguage3, #userLanguage4, #userLanguage5, #userLanguage6, #userLanguage7').forEach(el => el.textContent = userData.target_language);
+    updateCountryPlaceholder();
+    document.getElementById('successUserName').textContent = userData.name;
 }
 
 function populateSkillButtons() {
@@ -186,9 +288,19 @@ function showError(message) {
 }
 
 function showSuccess() {
-    successOverlay.style.display = 'flex';
-    onboardForm.style.pointerEvents = 'none';
-    onboardForm.style.opacity = '0.5';
+    // Motivational sentences for each slider level
+    const motivationExamples = [
+        "I'll do my best to get you ready for casual conversation!",
+        "Let's get you chatting with friends and making connections!",
+        "I'll help you handle daily life and work situations!",
+        "Let's dive into complex topics and media together!",
+        "Let's buckle down and start getting you all the way to fluency. If you put in the work, I promise to help you along the way!"
+    ];
+    document.getElementById('successOverlay').style.display = 'flex';
+    document.getElementById('onboardForm').style.pointerEvents = 'none';
+    document.getElementById('onboardForm').style.opacity = '0.5';
+    document.getElementById('successUserName').textContent = userData.name;
+    document.getElementById('emailMotivation').textContent = motivationExamples[selectedSliderLevel - 1];
 }
 
 // Add spinning animation
