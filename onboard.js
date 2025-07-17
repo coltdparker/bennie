@@ -203,6 +203,25 @@ function showSuccess() {
     successOverlay.style.display = 'flex';
     onboardForm.style.pointerEvents = 'none';
     onboardForm.style.opacity = '0.5';
+
+    // Compose Bennie email content
+    const name = userData.name || 'friend';
+    const goal = learningGoal.value.trim();
+    let exampleLine = "I'll do my best to get you ready for casual conversation!";
+    if (goal) {
+        if (/fluency|fluent|master/i.test(goal)) {
+            exampleLine = "Let's buckle down and start getting you all the way to fluency. If you put in the work, I promise to help you along the way!";
+        } else if (/travel|trip|visit|abroad/i.test(goal)) {
+            exampleLine = "I'll do my best to get you ready for casual conversation on your travels!";
+        } else if (/work|job|business|career|office/i.test(goal)) {
+            exampleLine = "Let's get you ready to impress your colleagues and clients at work!";
+        } else if (/family|friends|relationship|connect/i.test(goal)) {
+            exampleLine = "I'll help you connect with your family and friends in their language!";
+        }
+    }
+    const emailText = `It's great getting to know your goals, ${name}. Can't wait to chat!<br><br>${exampleLine}`;
+    document.getElementById('bennieEmailContent').innerHTML = emailText;
+    document.getElementById('bennieEmailSignature').innerHTML = 'Your pal,<br>Bennie';
 }
 
 // Add spinning animation
