@@ -19,6 +19,7 @@ const languageToCountry = {
     spanish: "Spain",
     french: "France",
     chinese: "China",
+    mandarin: "China",
     japanese: "Japan",
     german: "Germany",
     italian: "Italy"
@@ -85,6 +86,7 @@ function updateUserInfo() {
     
     // Update the learning goal placeholder with the appropriate country
     const country = languageToCountry[userData.target_language] || 'Spain'; // fallback to Spain
+    console.log(`Language: ${userData.target_language}, Country: ${country}`);
     learningGoal.placeholder = `For example: I want to travel to ${country} and have conversations with locals, or I need it for work to communicate with international clients...`;
 }
 
