@@ -221,7 +221,7 @@ function showSuccess() {
             exampleLine = "I'll help you connect with your family and friends in their language!";
         }
     }
-    const emailText = `It's great getting to know your goals, ${name}. Can't wait to chat!<br><br>${exampleLine}`;
+    const emailText = `Hello ${name},<br><br>It's great getting to know your goals. Can't wait to chat!<br><br>${exampleLine}<br><br>Your pal,<br>Bennie`;
     const emailContentDiv = document.getElementById('bennieEmailContent');
     const emailPlaceholder = document.getElementById('bennieEmailPlaceholder');
     if (emailContentDiv) {
@@ -229,12 +229,6 @@ function showSuccess() {
         emailContentDiv.innerHTML = emailText;
     } else {
         console.error('Could not find bennieEmailContent div!');
-    }
-    const emailSignatureDiv = document.getElementById('bennieEmailSignature');
-    if (emailSignatureDiv) {
-        emailSignatureDiv.innerHTML = 'Your pal,<br>Bennie';
-    } else {
-        console.error('Could not find bennieEmailSignature div!');
     }
 }
 
