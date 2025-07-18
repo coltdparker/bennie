@@ -95,7 +95,21 @@ function updateUserInfo() {
 function populateSkillButtons() {
     skillButtons.innerHTML = '';
     
-    skillSentences.forEach(sentence => {
+    skillSentences.forEach((sentence, index) => {
+        // Debug logging
+        console.log(`Creating button for sentence ${index}:`, sentence);
+        
+        // Validate sentence object
+        if (!sentence || typeof sentence !== 'object') {
+            console.error(`Invalid sentence object at index ${index}:`, sentence);
+            return;
+        }
+        
+        if (!sentence.text || !sentence.level || !sentence.category) {
+            console.error(`Missing required properties in sentence at index ${index}:`, sentence);
+            return;
+        }
+        
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'skill-button';
@@ -160,24 +174,31 @@ async function handleFormSubmit(e) {
     `;
     
     try {
+        // Log the data being sent
+        const requestData = {
+            token: userToken,
+            skill_level: formData.skillLevel,
+            learning_goal: formData.learningGoal,
+            motivation_goal: formData.motivationGoal,
+            topics_of_interest: formData.topicsOfInterest
+        };
+        console.log('Sending onboarding data:', requestData);
+        
         // Submit to backend
         const response = await fetch('/api/complete-onboarding', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-                token: userToken,
-                skill_level: formData.skillLevel,
-                learning_goal: formData.learningGoal,
-                motivation_goal: formData.motivationGoal,
-                topics_of_interest: formData.topicsOfInterest
-            })
+            body: JSON.stringify(requestData)
         });
+        
+        console.log('Response status:', response.status);
         
         if (!response.ok) {
             const errorData = await response.json();
-            throw new Error(errorData.detail || 'Failed to complete onboarding');
+            console.error('Error response:', errorData);
+            throw new Error(errorData.detail || `HTTP ${response.status}: Failed to complete onboarding`);
         }
         
         const result = await response.json();
@@ -190,7 +211,7 @@ async function handleFormSubmit(e) {
         
         // Re-enable submit button
         submitButton.disabled = false;
-        submitButton.innerHTML = 'Complete Onboarding';
+        submitButton.innerHTML = 'Complete My Profile';
     }
 }
 
