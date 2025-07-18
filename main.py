@@ -142,6 +142,7 @@ class OnboardingData(BaseModel):
     token: str
     skill_level: int
     learning_goal: str
+    motivation_goal: str
     topics_of_interest: str
 
 @app.post("/api/complete-onboarding")
@@ -173,6 +174,7 @@ async def complete_onboarding(onboarding_data: OnboardingData):
         update_data = {
             "proficiency_level": onboarding_data.skill_level,
             "learning_goal": onboarding_data.learning_goal,
+            "motivation_goal": onboarding_data.motivation_goal,
             "topics_of_interest": onboarding_data.topics_of_interest,
             "is_verified": True,
             "verification_token": None,  # Clear the token after use

@@ -25,14 +25,16 @@ const languageToCountry = {
     italian: "Italy"
 };
 
-// DOM Elements
+// DOM elements
 const onboardForm = document.getElementById('onboardForm');
 const skillButtons = document.getElementById('skillButtons');
 const learningGoal = document.getElementById('learningGoal');
+const motivationGoal = document.getElementById('motivationGoal');
 const topicsOfInterest = document.getElementById('topicsOfInterest');
 const submitButton = document.getElementById('submitButton');
 const successOverlay = document.getElementById('successOverlay');
 const charCount = document.getElementById('charCount');
+const charCount2 = document.getElementById('charCount2');
 
 // User data
 let userData = {};
@@ -82,7 +84,7 @@ async function fetchUserData() {
 
 function updateUserInfo() {
     document.querySelectorAll('#userName').forEach(el => el.textContent = userData.name);
-    document.querySelectorAll('#userLanguage, #userLanguage2, #userLanguage3, #userLanguage4').forEach(el => el.textContent = userData.target_language);
+    document.querySelectorAll('#userLanguage, #userLanguage2, #userLanguage3, #userLanguage4, #userLanguage5, #userLanguage6').forEach(el => el.textContent = userData.target_language);
     
     // Update the learning goal placeholder with the appropriate country
     const country = languageToCountry[userData.target_language] || 'Spain'; // fallback to Spain
@@ -119,6 +121,12 @@ function setupEventListeners() {
         charCount.style.color = count > 550 ? '#FA7561' : '#6b6b6b';
     });
     
+    motivationGoal.addEventListener('input', function() {
+        const count = this.value.length;
+        charCount2.textContent = count;
+        charCount2.style.color = count > 550 ? '#FA7561' : '#6b6b6b';
+    });
+    
     onboardForm.addEventListener('submit', handleFormSubmit);
 }
 
@@ -134,10 +142,11 @@ async function handleFormSubmit(e) {
         skillLevel: avgLevel,
         selectedSentences: selectedLevels,
         learningGoal: learningGoal.value.trim(),
+        motivationGoal: motivationGoal.value.trim(),
         topicsOfInterest: topicsOfInterest.value.trim()
     };
     
-    if (!formData.learningGoal || !formData.topicsOfInterest || selectedLevels.length === 0) {
+    if (!formData.learningGoal || !formData.motivationGoal || !formData.topicsOfInterest || selectedLevels.length === 0) {
         showError('Please fill in all fields and select at least one sentence!');
         return;
     }
@@ -161,6 +170,7 @@ async function handleFormSubmit(e) {
                 token: userToken,
                 skill_level: formData.skillLevel,
                 learning_goal: formData.learningGoal,
+                motivation_goal: formData.motivationGoal,
                 topics_of_interest: formData.topicsOfInterest
             })
         });
@@ -221,7 +231,7 @@ function showSuccess() {
             exampleLine = "I'll help you connect with your family and friends in their language!";
         }
     }
-    const emailText = `Hello ${name},<br><br>It's great getting to know your goals. Can't wait to chat!<br><br>${exampleLine}<br><br>Your pal,<br>Bennie`;
+    const emailText = `Hello ${name},<br><br>It's great getting to know your motivation. Can't wait to chat!<br><br>${exampleLine}<br><br>Your pal,<br>Bennie`;
     const emailContentDiv = document.getElementById('bennieEmailContent');
     const emailPlaceholder = document.getElementById('bennieEmailPlaceholder');
     if (emailContentDiv) {
