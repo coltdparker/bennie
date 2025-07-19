@@ -166,12 +166,26 @@ function setupEventListeners() {
 }
 
 function initializeSlider() {
+    // Debug: Check if elements exist
+    console.log('Initializing slider...');
+    console.log('sliderHandle:', sliderHandle);
+    console.log('speechBubble:', speechBubble);
+    console.log('levelMarkers:', levelMarkers);
+    console.log('sliderBar:', sliderBar);
+    
+    // Check if all required elements exist
+    if (!sliderHandle || !speechBubble || !levelMarkers.length || !sliderBar) {
+        console.error('Slider elements not found!');
+        return;
+    }
+    
     // Set initial state
     updateSlider(1);
     
     // Add click handlers for level markers
     levelMarkers.forEach(marker => {
         marker.addEventListener('click', () => {
+            console.log('Level marker clicked:', marker.dataset.level);
             const level = parseInt(marker.dataset.level);
             updateSlider(level);
         });
@@ -179,6 +193,7 @@ function initializeSlider() {
     
     // Add click handler for slider bar
     sliderBar.addEventListener('click', (e) => {
+        console.log('Slider bar clicked');
         const rect = sliderBar.getBoundingClientRect();
         const clickX = e.clientX - rect.left;
         const percentage = clickX / rect.width;
@@ -235,6 +250,7 @@ function initializeSlider() {
 }
 
 function updateSlider(level) {
+    console.log('updateSlider called with level:', level);
     currentLevel = level;
     
     // Update hidden input value
@@ -246,6 +262,7 @@ function updateSlider(level) {
     
     // Update slider handle position
     const percentage = ((level - 1) / 4) * 100; // Convert to 0-100%
+    console.log('Setting slider handle to percentage:', percentage);
     sliderHandle.style.left = `${percentage}%`;
     
     // Update level markers
@@ -253,6 +270,7 @@ function updateSlider(level) {
         const markerLevel = parseInt(marker.dataset.level);
         if (markerLevel === level) {
             marker.classList.add('active');
+            console.log('Activated marker:', markerLevel);
         } else {
             marker.classList.remove('active');
         }
