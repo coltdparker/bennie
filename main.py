@@ -13,7 +13,7 @@ from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import uvicorn
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from supabase import create_client, Client
 from typing import Optional
 import sys
@@ -140,10 +140,10 @@ async def verify_token(token: str):
 
 class OnboardingData(BaseModel):
     token: str
-    skill_level: int
-    learning_goal: str
-    motivation_goal: str
-    topics_of_interest: str
+    skill_level: int = Field(..., ge=1, le=10)  # Must be between 1 and 10
+    learning_goal: str = Field(..., min_length=1, max_length=1000)
+    motivation_goal: str = Field(..., min_length=1, max_length=1000)
+    topics_of_interest: str = Field(..., min_length=1, max_length=1000)
 
 @app.post("/api/complete-onboarding")
 async def complete_onboarding(onboarding_data: OnboardingData):

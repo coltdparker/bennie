@@ -152,6 +152,13 @@ async function handleFormSubmit(e) {
     // Calculate average difficulty
     const avgLevel = selectedLevels.length > 0 ? Math.round(selectedLevels.reduce((a, b) => a + b, 0) / selectedLevels.length) : 1;
     
+    // Debug logging for skill level calculation
+    console.log('Selected buttons:', selectedButtons.length);
+    console.log('Selected levels:', selectedLevels);
+    console.log('Calculated avgLevel:', avgLevel);
+    console.log('avgLevel type:', typeof avgLevel);
+    console.log('Is avgLevel NaN?', isNaN(avgLevel));
+    
     const formData = {
         skillLevel: avgLevel,
         selectedSentences: selectedLevels,
@@ -198,7 +205,31 @@ async function handleFormSubmit(e) {
         if (!response.ok) {
             const errorData = await response.json();
             console.error('Error response:', errorData);
-            throw new Error(errorData.detail || `HTTP ${response.status}: Failed to complete onboarding`);
+            
+            // Handle different error response formats
+            let errorMessage = 'Failed to complete onboarding';
+            if (errorData.detail) {
+                errorMessage = errorData.detail;
+            } else if (errorData.message) {
+                errorMessage = errorData.message;
+            } else if (typeof errorData === 'string') {
+                errorMessage = errorData;
+            } else if (errorData && typeof errorData === 'object') {
+                // Try to extract meaningful error from object
+                const errorKeys = Object.keys(errorData);
+                if (errorKeys.length > 0) {
+                    const firstError = errorData[errorKeys[0]];
+                    if (Array.isArray(firstError)) {
+                        errorMessage = firstError[0] || 'Validation error';
+                    } else if (typeof firstError === 'string') {
+                        errorMessage = firstError;
+                    } else {
+                        errorMessage = `HTTP ${response.status}: ${JSON.stringify(errorData)}`;
+                    }
+                }
+            }
+            
+            throw new Error(errorMessage);
         }
         
         const result = await response.json();
