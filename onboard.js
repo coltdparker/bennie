@@ -63,6 +63,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const urlParams = new URLSearchParams(window.location.search);
     userToken = urlParams.get('token');
     
+    // Initialize slider immediately (regardless of token status)
+    initializeSlider();
+    
     if (!userToken) {
         showError('Invalid access token. Please check your email link.');
         return;
@@ -160,9 +163,6 @@ function setupEventListeners() {
     });
     
     onboardForm.addEventListener('submit', handleFormSubmit);
-    
-    // Initialize slider
-    initializeSlider();
 }
 
 function initializeSlider() {
