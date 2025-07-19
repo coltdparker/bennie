@@ -102,13 +102,19 @@ function handleLanguageSelection(language) {
 function handleLanguageKeydown(e, language) {
     if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
+        console.log('Language button keydown:', e.key, 'for language:', language);
         handleLanguageSelection(language);
         
         // If name is already filled, submit the form
         const name = nameInput.value.trim();
+        console.log('Name value:', name, 'Selected language:', selectedLanguage);
         if (name) {
-            handleFormSubmit(new Event('submit'));
+            console.log('Attempting to submit form...');
+            // Create a proper submit event and dispatch it
+            const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+            userForm.dispatchEvent(submitEvent);
         } else {
+            console.log('Name not filled, focusing on name input');
             // Focus on name input if not filled
             nameInput.focus();
         }
@@ -131,9 +137,11 @@ function updateSubmitButton() {
 
 // Handle form submission
 function handleFormSubmit(e) {
+    console.log('Form submission handler called');
     e.preventDefault();
     
     const name = nameInput.value.trim();
+    console.log('Form submission - Name:', name, 'Language:', selectedLanguage);
     
     if (!name) {
         showFormError('Please enter your name');
