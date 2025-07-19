@@ -36,9 +36,27 @@ const successOverlay = document.getElementById('successOverlay');
 const charCount = document.getElementById('charCount');
 const charCount2 = document.getElementById('charCount2');
 
+// Slider elements
+const sliderHandle = document.getElementById('sliderHandle');
+const speechBubble = document.getElementById('speechBubble');
+const levelMarkers = document.querySelectorAll('.level-marker');
+const sliderBar = document.querySelector('.slider-bar');
+
 // User data
 let userData = {};
 let userToken = '';
+
+// Slider level descriptions
+const levelDescriptions = {
+    1: "Level 1 - Basics: Great for travel and simple conversations",
+    2: "Level 2 - Getting Comfortable: I want to have basic conversations and understand more",
+    3: "Level 3 - Conversational: I want to chat naturally with native speakers",
+    4: "Level 4 - Advanced: I want to express complex ideas and understand nuances",
+    5: "Level 5 - Fluent: I'm in it for the long haul and want native level fluency!"
+};
+
+// Current slider level
+let currentLevel = 1;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', function() {
@@ -142,6 +160,109 @@ function setupEventListeners() {
     });
     
     onboardForm.addEventListener('submit', handleFormSubmit);
+    
+    // Initialize slider
+    initializeSlider();
+}
+
+function initializeSlider() {
+    // Set initial state
+    updateSlider(1);
+    
+    // Add click handlers for level markers
+    levelMarkers.forEach(marker => {
+        marker.addEventListener('click', () => {
+            const level = parseInt(marker.dataset.level);
+            updateSlider(level);
+        });
+    });
+    
+    // Add click handler for slider bar
+    sliderBar.addEventListener('click', (e) => {
+        const rect = sliderBar.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const percentage = clickX / rect.width;
+        const level = Math.round(percentage * 4) + 1; // Convert to 1-5 range
+        updateSlider(Math.max(1, Math.min(5, level)));
+    });
+    
+    // Add drag functionality for slider handle
+    let isDragging = false;
+    
+    sliderHandle.addEventListener('mousedown', () => {
+        isDragging = true;
+        sliderHandle.style.cursor = 'grabbing';
+    });
+    
+    document.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        
+        const rect = sliderBar.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const percentage = mouseX / rect.width;
+        const level = Math.round(percentage * 4) + 1; // Convert to 1-5 range
+        updateSlider(Math.max(1, Math.min(5, level)));
+    });
+    
+    document.addEventListener('mouseup', () => {
+        if (isDragging) {
+            isDragging = false;
+            sliderHandle.style.cursor = 'grab';
+        }
+    });
+    
+    // Touch support for mobile
+    sliderHandle.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        isDragging = true;
+    });
+    
+    document.addEventListener('touchmove', (e) => {
+        if (!isDragging) return;
+        e.preventDefault();
+        
+        const touch = e.touches[0];
+        const rect = sliderBar.getBoundingClientRect();
+        const touchX = touch.clientX - rect.left;
+        const percentage = touchX / rect.width;
+        const level = Math.round(percentage * 4) + 1; // Convert to 1-5 range
+        updateSlider(Math.max(1, Math.min(5, level)));
+    });
+    
+    document.addEventListener('touchend', () => {
+        isDragging = false;
+    });
+}
+
+function updateSlider(level) {
+    currentLevel = level;
+    
+    // Update hidden input value
+    learningGoal.value = level;
+    
+    // Update speech bubble content
+    const speechBubbleContent = speechBubble.querySelector('.speech-bubble-content');
+    speechBubbleContent.innerHTML = `<strong>${levelDescriptions[level].split(':')[0]}:</strong> ${levelDescriptions[level].split(':')[1]}`;
+    
+    // Update slider handle position
+    const percentage = ((level - 1) / 4) * 100; // Convert to 0-100%
+    sliderHandle.style.left = `${percentage}%`;
+    
+    // Update level markers
+    levelMarkers.forEach(marker => {
+        const markerLevel = parseInt(marker.dataset.level);
+        if (markerLevel === level) {
+            marker.classList.add('active');
+        } else {
+            marker.classList.remove('active');
+        }
+    });
+    
+    // Update speech bubble position on desktop
+    if (window.innerWidth > 768) {
+        speechBubble.style.left = `${percentage}%`;
+        speechBubble.style.transform = 'translateX(-50%)';
+    }
 }
 
 async function handleFormSubmit(e) {
@@ -162,12 +283,12 @@ async function handleFormSubmit(e) {
     const formData = {
         skillLevel: avgLevel,
         selectedSentences: selectedLevels,
-        learningGoal: learningGoal.value.trim(),
+        learningGoal: learningGoal.value, // This is now the slider level (1-5)
         motivationGoal: motivationGoal.value.trim(),
         topicsOfInterest: topicsOfInterest.value.trim()
     };
     
-    if (!formData.learningGoal || !formData.motivationGoal || !formData.topicsOfInterest || selectedLevels.length === 0) {
+    if (!formData.motivationGoal || !formData.topicsOfInterest || selectedLevels.length === 0) {
         showError('Please fill in all fields and select at least one sentence!');
         return;
     }
@@ -270,18 +391,28 @@ function showSuccess() {
 
     // Compose Bennie email content
     const name = userData.name || 'friend';
-    const goal = learningGoal.value.trim();
+    const goalLevel = parseInt(learningGoal.value) || 1;
     let exampleLine = "I'll do my best to get you ready for casual conversation!";
-    if (goal) {
-        if (/fluency|fluent|master/i.test(goal)) {
+    
+    // Use the slider level to determine the message
+    switch(goalLevel) {
+        case 1:
+            exampleLine = "I'll help you get comfortable with the basics for travel and simple conversations!";
+            break;
+        case 2:
+            exampleLine = "Let's build your confidence with basic conversations and understanding!";
+            break;
+        case 3:
+            exampleLine = "I'll help you chat naturally with native speakers and feel comfortable in conversations!";
+            break;
+        case 4:
+            exampleLine = "Let's work on expressing complex ideas and understanding the nuances of the language!";
+            break;
+        case 5:
             exampleLine = "Let's buckle down and start getting you all the way to fluency. If you put in the work, I promise to help you along the way!";
-        } else if (/travel|trip|visit|abroad/i.test(goal)) {
-            exampleLine = "I'll do my best to get you ready for casual conversation on your travels!";
-        } else if (/work|job|business|career|office/i.test(goal)) {
-            exampleLine = "Let's get you ready to impress your colleagues and clients at work!";
-        } else if (/family|friends|relationship|connect/i.test(goal)) {
-            exampleLine = "I'll help you connect with your family and friends in their language!";
-        }
+            break;
+        default:
+            exampleLine = "I'll do my best to get you ready for casual conversation!";
     }
     const emailText = `Hello ${name},<br><br>It's great getting to know your motivation. Can't wait to chat!<br><br>${exampleLine}<br><br>Your pal,<br>Bennie`;
     const emailContentDiv = document.getElementById('bennieEmailContent');

@@ -267,6 +267,124 @@
             background-color: #d1d1d1;
         }
         
+        /* Slider Styles */
+        .slider-container {
+            position: relative;
+            margin: 40px 0;
+            padding: 20px 0;
+        }
+        
+        .speech-bubble {
+            position: absolute;
+            top: -80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            border: 2px solid #FA7561;
+            border-radius: 12px;
+            padding: 16px 20px;
+            box-shadow: 0 4px 12px rgba(250, 117, 97, 0.15);
+            z-index: 10;
+            transition: all 0.3s ease;
+            max-width: 280px;
+            width: 100%;
+        }
+        
+        .speech-bubble-content {
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            color: #1a1a1a;
+            line-height: 1.4;
+            text-align: center;
+        }
+        
+        .speech-bubble-arrow {
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-top: 8px solid #FA7561;
+        }
+        
+        .slider-track {
+            position: relative;
+            margin-top: 60px;
+        }
+        
+        .level-markers {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+        
+        .level-marker {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #E9E2DF;
+            border: 2px solid #d1d1d1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 600;
+            color: #4a4a4a;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            user-select: none;
+        }
+        
+        .level-marker:hover {
+            background: #FA7561;
+            border-color: #FA7561;
+            color: white;
+            transform: scale(1.1);
+        }
+        
+        .level-marker.active {
+            background: #FA7561;
+            border-color: #FA7561;
+            color: white;
+        }
+        
+        .slider-bar {
+            position: relative;
+            height: 8px;
+            background: #E9E2DF;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .slider-handle {
+            position: absolute;
+            top: 50%;
+            left: 0%;
+            transform: translate(-50%, -50%);
+            width: 24px;
+            height: 24px;
+            background: #FA7561;
+            border: 3px solid white;
+            border-radius: 50%;
+            box-shadow: 0 2px 8px rgba(250, 117, 97, 0.3);
+            cursor: grab;
+            transition: all 0.3s ease;
+            z-index: 5;
+        }
+        
+        .slider-handle:hover {
+            transform: translate(-50%, -50%) scale(1.1);
+            box-shadow: 0 4px 12px rgba(250, 117, 97, 0.4);
+        }
+        
+        .slider-handle:active {
+            cursor: grabbing;
+        }
+        
+        /* Mobile Styles */
         @media (max-width: 768px) {
             .skill-buttons {
                 grid-template-columns: 1fr;
@@ -274,6 +392,21 @@
             
             .onboard-container {
                 padding: 20px 15px;
+            }
+            
+            .speech-bubble {
+                position: static;
+                transform: none;
+                margin-bottom: 30px;
+                max-width: none;
+            }
+            
+            .speech-bubble-arrow {
+                display: none;
+            }
+            
+            .slider-track {
+                margin-top: 20px;
             }
         }
     </style>
@@ -302,14 +435,38 @@
                 <div class="form-section">
                     <h2 class="form-title">What's your learning goal?</h2>
                     <div class="form-group">
-                        <label for="learningGoal" class="form-label">Tell me what you hope to achieve with <span id="userLanguage4">your language</span>:</label>
-                        <textarea 
-                            id="learningGoal" 
-                            class="form-textarea" 
-                            placeholder="For example: I want to travel to Spain and have conversations with locals, or I need it for work to communicate with international clients..."
-                            maxlength="600"
-                        ></textarea>
-                        <div class="char-count"><span id="charCount">0</span>/600 characters</div>
+                        <label class="form-label">How well do you want to learn <span id="userLanguage4">your language</span>?</label>
+                        
+                        <!-- Slider Container -->
+                        <div class="slider-container">
+                            <!-- Speech Bubble -->
+                            <div class="speech-bubble" id="speechBubble">
+                                <div class="speech-bubble-content">
+                                    <strong>Level 1 - Basics:</strong> Great for travel and simple conversations
+                                </div>
+                                <div class="speech-bubble-arrow"></div>
+                            </div>
+                            
+                            <!-- Slider Track -->
+                            <div class="slider-track">
+                                <!-- Level Markers -->
+                                <div class="level-markers">
+                                    <div class="level-marker" data-level="1">①</div>
+                                    <div class="level-marker" data-level="2">②</div>
+                                    <div class="level-marker" data-level="3">③</div>
+                                    <div class="level-marker" data-level="4">④</div>
+                                    <div class="level-marker" data-level="5">⑤</div>
+                                </div>
+                                
+                                <!-- Slider Bar -->
+                                <div class="slider-bar">
+                                    <div class="slider-handle" id="sliderHandle"></div>
+                                </div>
+                            </div>
+                            
+                            <!-- Hidden input for form submission -->
+                            <input type="hidden" id="learningGoal" name="learningGoal" value="1">
+                        </div>
                     </div>
                 </div>
 
