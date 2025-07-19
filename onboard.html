@@ -276,8 +276,8 @@
         
         .speech-bubble {
             position: absolute;
-            top: -70px;
-            left: 0%;
+            top: -60px;
+            left: 50%;
             transform: translateX(-50%);
             background: white;
             border: 2px solid #FA7561;
@@ -286,7 +286,7 @@
             box-shadow: 0 4px 12px rgba(250, 117, 97, 0.15);
             z-index: 10;
             transition: all 0.3s ease;
-            max-width: 280px;
+            max-width: 320px;
             width: 100%;
         }
         
@@ -296,18 +296,6 @@
             color: #1a1a1a;
             line-height: 1.4;
             text-align: center;
-        }
-        
-        .speech-bubble-arrow {
-            position: absolute;
-            bottom: -8px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 0;
-            height: 0;
-            border-left: 8px solid transparent;
-            border-right: 8px solid transparent;
-            border-top: 8px solid #FA7561;
         }
         
         .slider-track {
@@ -338,12 +326,7 @@
             user-select: none;
         }
         
-        .level-marker:hover {
-            background: #FA7561;
-            border-color: #FA7561;
-            color: white;
-            transform: scale(1.1);
-        }
+
         
         .level-marker.active {
             background: #FA7561;
@@ -401,9 +384,7 @@
                 max-width: none;
             }
             
-            .speech-bubble-arrow {
-                display: none;
-            }
+
             
             .slider-track {
                 margin-top: 20px;
@@ -444,7 +425,6 @@
                                 <div class="speech-bubble-content">
                                     <strong>Level 1 - Basics:</strong> Great for travel and simple conversations
                                 </div>
-                                <div class="speech-bubble-arrow"></div>
                             </div>
                             
                             <!-- Slider Track -->

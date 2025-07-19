@@ -258,11 +258,7 @@ function updateSlider(level) {
         }
     });
     
-    // Update speech bubble position on desktop
-    if (window.innerWidth > 768) {
-        speechBubble.style.left = `${percentage}%`;
-        speechBubble.style.transform = 'translateX(-50%)';
-    }
+    // Speech bubble stays centered, no positioning updates needed
 }
 
 async function handleFormSubmit(e) {
