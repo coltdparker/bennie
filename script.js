@@ -84,7 +84,12 @@ function showForm() {
 
 // Handle language selection
 function handleLanguageSelection(language) {
+    console.log('handleLanguageSelection called with:', language);
+    console.log('Previous selectedLanguage:', selectedLanguage);
+    
     selectedLanguage = language;
+    
+    console.log('New selectedLanguage:', selectedLanguage);
     
     // Update button states
     languageButtons.forEach(btn => {
@@ -96,6 +101,8 @@ function handleLanguageSelection(language) {
     
     // Enable submit button if name is filled
     updateSubmitButton();
+    
+    console.log('Language selection complete. selectedLanguage:', selectedLanguage);
 }
 
 // Handle keyboard events for language buttons
@@ -103,21 +110,45 @@ function handleLanguageKeydown(e, language) {
     if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
         console.log('Language button keydown:', e.key, 'for language:', language);
+        
+        // First, select the language
         handleLanguageSelection(language);
         
-        // If name is already filled, submit the form
-        const name = nameInput.value.trim();
-        console.log('Name value:', name, 'Selected language:', selectedLanguage);
-        if (name) {
-            console.log('Attempting to submit form...');
-            // Create a proper submit event and dispatch it
-            const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
-            userForm.dispatchEvent(submitEvent);
-        } else {
-            console.log('Name not filled, focusing on name input');
-            // Focus on name input if not filled
-            nameInput.focus();
-        }
+        // Add a small delay to ensure state is updated
+        setTimeout(() => {
+            // If name is already filled, submit the form
+            const name = nameInput.value.trim();
+            console.log('Name value:', name, 'Selected language:', selectedLanguage);
+            
+            if (name && selectedLanguage) {
+                console.log('Attempting to submit form...');
+                
+                // Try multiple approaches to submit the form
+                try {
+                    // Method 1: Direct form submission
+                    if (userForm.requestSubmit) {
+                        console.log('Using requestSubmit method');
+                        userForm.requestSubmit();
+                    } else {
+                        // Method 2: Create and dispatch submit event
+                        console.log('Using dispatchEvent method');
+                        const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+                        userForm.dispatchEvent(submitEvent);
+                    }
+                } catch (error) {
+                    console.error('Error submitting form:', error);
+                    
+                    // Method 3: Fallback - call handleFormSubmit directly
+                    console.log('Using direct handleFormSubmit call');
+                    const mockEvent = { preventDefault: () => {} };
+                    handleFormSubmit(mockEvent);
+                }
+            } else {
+                console.log('Name not filled or language not selected, focusing on name input');
+                // Focus on name input if not filled
+                nameInput.focus();
+            }
+        }, 10); // Small delay to ensure state updates
     }
 }
 
@@ -126,32 +157,45 @@ function updateSubmitButton() {
     const name = nameInput.value.trim();
     const canSubmit = name && selectedLanguage;
     
+    console.log('updateSubmitButton - name:', name, 'selectedLanguage:', selectedLanguage, 'canSubmit:', canSubmit);
+    
     submitButton.disabled = !canSubmit;
     
     if (canSubmit) {
         submitButton.style.opacity = '1';
+        console.log('Submit button enabled');
     } else {
         submitButton.style.opacity = '0.6';
+        console.log('Submit button disabled');
     }
 }
 
 // Handle form submission
 function handleFormSubmit(e) {
+    console.log('=== FORM SUBMISSION START ===');
     console.log('Form submission handler called');
+    console.log('Event type:', e.type);
+    console.log('Event target:', e.target);
+    
     e.preventDefault();
     
     const name = nameInput.value.trim();
     console.log('Form submission - Name:', name, 'Language:', selectedLanguage);
+    console.log('User email:', userEmail);
     
     if (!name) {
+        console.log('ERROR: No name provided');
         showFormError('Please enter your name');
         return;
     }
     
     if (!selectedLanguage) {
+        console.log('ERROR: No language selected');
         showFormError('Please select a language');
         return;
     }
+    
+    console.log('Form validation passed, proceeding with submission...');
     
     // Show loading state
     submitButton.disabled = true;
@@ -169,6 +213,8 @@ function handleFormSubmit(e) {
         language: selectedLanguage
     };
     
+    console.log('Sending user data to API:', userData);
+    
     fetch('/api/users', {
         method: 'POST',
         headers: {
@@ -177,20 +223,23 @@ function handleFormSubmit(e) {
         body: JSON.stringify(userData)
     })
     .then(response => {
+        console.log('API response status:', response.status);
         if (!response.ok) {
             throw new Error('Network response was not ok');
         }
         return response.json();
     })
     .then(data => {
+        console.log('API response data:', data);
         if (data.success) {
+            console.log('SUCCESS: User created successfully');
             showSuccess(name);
         } else {
             throw new Error(data.message || 'Failed to create user');
         }
     })
     .catch(error => {
-        console.error('Error:', error);
+        console.error('ERROR in form submission:', error);
         showFormError('Failed to create account. Please try again.');
         
         // Reset button
@@ -202,6 +251,8 @@ function handleFormSubmit(e) {
             </svg>
         `;
     });
+    
+    console.log('=== FORM SUBMISSION END ===');
 }
 
 // Show form error
