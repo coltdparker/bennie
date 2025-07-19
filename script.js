@@ -1,14 +1,23 @@
 console.log('=== SCRIPT.JS LOADED ===');
 
 // DOM Elements
+console.log('About to get DOM elements...');
 const emailInput = document.getElementById('emailInput');
+console.log('emailInput:', emailInput);
 const emailButton = document.getElementById('emailButton');
+console.log('emailButton:', emailButton);
 const emailContainer = document.getElementById('emailContainer');
+console.log('emailContainer:', emailContainer);
 const formSection = document.getElementById('formSection');
+console.log('formSection:', formSection);
 const successSection = document.getElementById('successSection');
+console.log('successSection:', successSection);
 const userForm = document.getElementById('userForm');
+console.log('userForm:', userForm);
 const nameInput = document.getElementById('nameInput');
+console.log('nameInput:', nameInput);
 const submitButton = document.getElementById('submitButton');
+console.log('submitButton:', submitButton);
 
 console.log('DOM elements found:', {
     emailInput: !!emailInput,
@@ -20,6 +29,7 @@ console.log('DOM elements found:', {
 });
 
 // State
+console.log('Setting up state variables...');
 let selectedLanguage = null;
 let userEmail = '';
 
