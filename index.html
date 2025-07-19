@@ -192,6 +192,11 @@
         </footer>
     </div>
 
-    <script src="/static/script.js"></script>
+    <script>
+        console.log('=== INLINE SCRIPT TEST ===');
+        console.log('This should appear if JavaScript is working');
+    </script>
+    
+    <script src="/static/script.js" onerror="console.error('Failed to load script.js')" onload="console.log('script.js loaded successfully')"></script>
 </body>
 </html> 

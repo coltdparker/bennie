@@ -1,3 +1,5 @@
+console.log('=== SCRIPT.JS LOADED ===');
+
 // DOM Elements
 const emailInput = document.getElementById('emailInput');
 const emailButton = document.getElementById('emailButton');
@@ -189,6 +191,34 @@ function handleLanguageButtonKeydown(e, language, buttonElement) {
     }
     
     console.log('=== LANGUAGE BUTTON KEYDOWN END ===');
+}
+
+// Submit form function
+function submitForm() {
+    console.log('=== SUBMIT FORM START ===');
+    
+    // Try multiple approaches to submit the form
+    try {
+        // Method 1: Direct form submission
+        if (userForm.requestSubmit) {
+            console.log('Using requestSubmit method');
+            userForm.requestSubmit();
+        } else {
+            // Method 2: Create and dispatch submit event
+            console.log('Using dispatchEvent method');
+            const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+            userForm.dispatchEvent(submitEvent);
+        }
+    } catch (error) {
+        console.error('Error submitting form:', error);
+        
+        // Method 3: Fallback - call handleFormSubmit directly
+        console.log('Using direct handleFormSubmit call');
+        const mockEvent = { preventDefault: () => {} };
+        handleFormSubmit(mockEvent);
+    }
+    
+    console.log('=== SUBMIT FORM END ===');
 }
 
 // Handle language selection
