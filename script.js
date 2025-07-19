@@ -98,6 +98,23 @@ function handleLanguageSelection(language) {
     updateSubmitButton();
 }
 
+// Handle keyboard events for language buttons
+function handleLanguageKeydown(e, language) {
+    if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        handleLanguageSelection(language);
+        
+        // If name is already filled, submit the form
+        const name = nameInput.value.trim();
+        if (name) {
+            handleFormSubmit(new Event('submit'));
+        } else {
+            // Focus on name input if not filled
+            nameInput.focus();
+        }
+    }
+}
+
 // Update submit button state
 function updateSubmitButton() {
     const name = nameInput.value.trim();
@@ -254,15 +271,34 @@ emailInput.addEventListener('keypress', (e) => {
     }
 });
 
-// Language button clicks
+// Language button clicks and keyboard events
 languageButtons.forEach(btn => {
     btn.addEventListener('click', () => {
         handleLanguageSelection(btn.dataset.language);
     });
+    
+    // Add keyboard event listeners for Enter and Space
+    btn.addEventListener('keydown', (e) => {
+        handleLanguageKeydown(e, btn.dataset.language);
+    });
+    
+    // Make buttons focusable for keyboard navigation
+    btn.setAttribute('tabindex', '0');
 });
 
-// Name input changes
+// Name input changes and keyboard events
 nameInput.addEventListener('input', updateSubmitButton);
+
+// Handle Enter key in name input to focus on language selection
+nameInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        // Focus on the first language button
+        if (languageButtons.length > 0) {
+            languageButtons[0].focus();
+        }
+    }
+});
 
 // Form submission
 userForm.addEventListener('submit', handleFormSubmit);
