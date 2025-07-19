@@ -14,7 +14,9 @@ let userEmail = '';
 
 // Function to get fresh language button references
 function getLanguageButtons() {
-    return document.querySelectorAll('.language-btn');
+    const buttons = document.querySelectorAll('.language-btn');
+    console.log('getLanguageButtons() called, found', buttons.length, 'buttons');
+    return buttons;
 }
 
 // Email validation
@@ -25,20 +27,27 @@ function isValidEmail(email) {
 
 // Handle email input and button click
 function handleEmailSubmit() {
+    console.log('=== EMAIL SUBMISSION START ===');
     const email = emailInput.value.trim();
+    console.log('Email value:', email);
     
     if (!email) {
+        console.log('ERROR: No email provided');
         showError('Please enter your email address');
         return;
     }
     
     if (!isValidEmail(email)) {
+        console.log('ERROR: Invalid email format');
         showError('Please enter a valid email address');
         return;
     }
     
+    console.log('Email validation passed');
     userEmail = email;
+    console.log('User email set to:', userEmail);
     showForm();
+    console.log('=== EMAIL SUBMISSION END ===');
 }
 
 // Show error message
@@ -77,14 +86,22 @@ function showError(message) {
 
 // Show the form section
 function showForm() {
+    console.log('=== SHOW FORM START ===');
+    console.log('Form section display before:', formSection.style.display);
+    
     formSection.style.display = 'block';
     formSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
     
+    console.log('Form section display after:', formSection.style.display);
+    
     // Set up language button event listeners after form is visible
     setTimeout(() => {
+        console.log('Setting up language button listeners...');
         setupLanguageButtonListeners();
         // Focus on name input
+        console.log('Focusing on name input');
         nameInput.focus();
+        console.log('=== SHOW FORM END ===');
     }, 100);
 }
 
@@ -93,83 +110,92 @@ function setupLanguageButtonListeners() {
     const languageButtons = getLanguageButtons();
     console.log('Setting up language button listeners. Found buttons:', languageButtons.length);
     
-    languageButtons.forEach(btn => {
+    languageButtons.forEach((btn, index) => {
+        console.log(`Setting up button ${index}:`, btn.dataset.language);
+        
         // Remove any existing listeners to prevent duplicates
         btn.removeEventListener('click', handleLanguageButtonClick);
         btn.removeEventListener('keydown', handleLanguageButtonKeydown);
         
         // Add click listener
         btn.addEventListener('click', () => {
+            console.log(`Button ${index} (${btn.dataset.language}) clicked`);
             handleLanguageButtonClick(btn.dataset.language);
         });
         
         // Add keyboard event listeners for Enter and Space
         btn.addEventListener('keydown', (e) => {
-            handleLanguageButtonKeydown(e, btn.dataset.language);
+            console.log(`Button ${index} (${btn.dataset.language}) keydown:`, e.key);
+            handleLanguageButtonKeydown(e, btn.dataset.language, btn);
         });
         
         // Make buttons focusable for keyboard navigation
         btn.setAttribute('tabindex', '0');
+        console.log(`Button ${index} tabindex set to 0`);
     });
+    
+    console.log('Language button listeners setup complete');
 }
 
 // Handle language button click
 function handleLanguageButtonClick(language) {
-    console.log('Language button clicked:', language);
+    console.log('=== LANGUAGE BUTTON CLICK ===');
+    console.log('Language clicked:', language);
     handleLanguageSelection(language);
+    console.log('=== LANGUAGE BUTTON CLICK END ===');
 }
 
 // Handle language button keydown
-function handleLanguageButtonKeydown(e, language) {
-    if (e.key === 'Enter' || e.key === ' ') {
+function handleLanguageButtonKeydown(e, language, buttonElement) {
+    console.log('=== LANGUAGE BUTTON KEYDOWN ===');
+    console.log('Key pressed:', e.key);
+    console.log('Language:', language);
+    console.log('Button element:', buttonElement);
+    console.log('Button has selected class:', buttonElement.classList.contains('selected'));
+    
+    if (e.key === 'Enter') {
         e.preventDefault();
-        console.log('Language button keydown:', e.key, 'for language:', language);
+        console.log('Enter key pressed on language button');
         
-        // First, select the language
-        handleLanguageSelection(language);
-        
-        // Add a small delay to ensure state is updated
-        setTimeout(() => {
-            // If name is already filled, submit the form
+        // Check if this button is already selected
+        if (buttonElement.classList.contains('selected')) {
+            console.log('Button is already selected, attempting form submission');
+            
+            // Get name value
             const name = nameInput.value.trim();
-            console.log('Name value:', name, 'Selected language:', selectedLanguage);
+            console.log('Name value:', name);
+            console.log('Selected language:', selectedLanguage);
             
             if (name && selectedLanguage) {
-                console.log('Attempting to submit form...');
-                
-                // Try multiple approaches to submit the form
-                try {
-                    // Method 1: Direct form submission
-                    if (userForm.requestSubmit) {
-                        console.log('Using requestSubmit method');
-                        userForm.requestSubmit();
-                    } else {
-                        // Method 2: Create and dispatch submit event
-                        console.log('Using dispatchEvent method');
-                        const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
-                        userForm.dispatchEvent(submitEvent);
-                    }
-                } catch (error) {
-                    console.error('Error submitting form:', error);
-                    
-                    // Method 3: Fallback - call handleFormSubmit directly
-                    console.log('Using direct handleFormSubmit call');
-                    const mockEvent = { preventDefault: () => {} };
-                    handleFormSubmit(mockEvent);
-                }
+                console.log('Name and language both present, submitting form');
+                submitForm();
             } else {
-                console.log('Name not filled or language not selected, focusing on name input');
-                // Focus on name input if not filled
-                nameInput.focus();
+                console.log('Missing name or language:');
+                console.log('- Name:', name);
+                console.log('- Selected language:', selectedLanguage);
+                if (!name) {
+                    console.log('Focusing on name input');
+                    nameInput.focus();
+                }
             }
-        }, 10); // Small delay to ensure state updates
+        } else {
+            console.log('Button not selected, selecting language');
+            handleLanguageSelection(language);
+        }
+    } else if (e.key === ' ') {
+        e.preventDefault();
+        console.log('Space key pressed, selecting language');
+        handleLanguageSelection(language);
     }
+    
+    console.log('=== LANGUAGE BUTTON KEYDOWN END ===');
 }
 
 // Handle language selection
 function handleLanguageSelection(language) {
-    console.log('handleLanguageSelection called with:', language);
+    console.log('=== LANGUAGE SELECTION START ===');
     console.log('Previous selectedLanguage:', selectedLanguage);
+    console.log('New language to select:', language);
     
     selectedLanguage = language;
     
@@ -177,17 +203,23 @@ function handleLanguageSelection(language) {
     
     // Update button states
     const languageButtons = getLanguageButtons(); // Get fresh references
-    languageButtons.forEach(btn => {
+    console.log('Updating button states for', languageButtons.length, 'buttons');
+    
+    languageButtons.forEach((btn, index) => {
+        const wasSelected = btn.classList.contains('selected');
         btn.classList.remove('selected');
         if (btn.dataset.language === language) {
             btn.classList.add('selected');
+            console.log(`Button ${index} (${btn.dataset.language}) selected`);
         }
+        console.log(`Button ${index} (${btn.dataset.language}): ${wasSelected} -> ${btn.classList.contains('selected')}`);
     });
     
     // Enable submit button if name is filled
     updateSubmitButton();
     
     console.log('Language selection complete. selectedLanguage:', selectedLanguage);
+    console.log('=== LANGUAGE SELECTION END ===');
 }
 
 // Update submit button state
@@ -329,6 +361,8 @@ function showFormError(message) {
 
 // Show success section
 function showSuccess(name) {
+    console.log('=== SHOW SUCCESS START ===');
+    
     // Update success message with user's language
     const languageDisplay = document.getElementById('selectedLanguageDisplay');
     const userEmailDisplay = document.getElementById('userEmailDisplay');
@@ -352,44 +386,26 @@ function showSuccess(name) {
     successSection.style.display = 'block';
     successSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
     
-    // Here you would typically send the data to your backend
+    console.log('Success section shown');
     console.log('User data:', {
         email: userEmail,
         name: name,
         language: selectedLanguage
     });
+    console.log('=== SHOW SUCCESS END ===');
 }
 
 // Event Listeners
 emailButton.addEventListener('click', handleEmailSubmit);
 emailInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
+        console.log('Email input Enter key pressed');
         handleEmailSubmit();
     }
 });
 
 // Name input changes and keyboard events
 nameInput.addEventListener('input', updateSubmitButton);
-
-// Handle Enter key in name input to focus on language selection
-nameInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-        e.preventDefault();
-        console.log('Name input Enter key pressed');
-        
-        // Get fresh language button references
-        const languageButtons = getLanguageButtons();
-        console.log('Found language buttons:', languageButtons.length);
-        
-        // Focus on the first language button
-        if (languageButtons.length > 0) {
-            console.log('Focusing on first language button');
-            languageButtons[0].focus();
-        } else {
-            console.log('No language buttons found!');
-        }
-    }
-});
 
 // Form submission
 userForm.addEventListener('submit', handleFormSubmit);
@@ -432,4 +448,4 @@ document.addEventListener('DOMContentLoaded', () => {
     submitButton.disabled = true;
     
     console.log('=== INITIALIZATION COMPLETE ===');
-}); 
+});
