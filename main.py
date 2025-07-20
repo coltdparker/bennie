@@ -162,6 +162,7 @@ async def complete_onboarding(onboarding_data: OnboardingData):
     """
     try:
         logger.info(f"Completing onboarding for token: {onboarding_data.token[:10]}... with target_proficiency: {onboarding_data.target_proficiency}")
+        logger.info(f"Full onboarding data received: {onboarding_data}")
         
         # First verify the token and get user
         verify_response = supabase.table("users").select("id").eq("verification_token", onboarding_data.token).execute()

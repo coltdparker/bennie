@@ -387,30 +387,48 @@ async function handleFormSubmit(e) {
         if (!response.ok) {
             const errorData = await response.json();
             console.error('Error response:', errorData);
+            console.error('Error response type:', typeof errorData);
+            console.error('Error response keys:', Object.keys(errorData));
             
             // Handle different error response formats
             let errorMessage = 'Failed to complete onboarding';
+            
+            // Log the full error structure for debugging
+            console.error('Full error data:', JSON.stringify(errorData, null, 2));
+            
             if (errorData.detail) {
                 errorMessage = errorData.detail;
+                console.log('Using errorData.detail:', errorMessage);
             } else if (errorData.message) {
                 errorMessage = errorData.message;
+                console.log('Using errorData.message:', errorMessage);
             } else if (typeof errorData === 'string') {
                 errorMessage = errorData;
+                console.log('Using errorData as string:', errorMessage);
             } else if (errorData && typeof errorData === 'object') {
                 // Try to extract meaningful error from object
                 const errorKeys = Object.keys(errorData);
+                console.log('Error keys found:', errorKeys);
+                
                 if (errorKeys.length > 0) {
                     const firstError = errorData[errorKeys[0]];
+                    console.log('First error value:', firstError);
+                    console.log('First error type:', typeof firstError);
+                    
                     if (Array.isArray(firstError)) {
                         errorMessage = firstError[0] || 'Validation error';
+                        console.log('Using array first element:', errorMessage);
                     } else if (typeof firstError === 'string') {
                         errorMessage = firstError;
+                        console.log('Using first error as string:', errorMessage);
                     } else {
                         errorMessage = `HTTP ${response.status}: ${JSON.stringify(errorData)}`;
+                        console.log('Using JSON stringified error:', errorMessage);
                     }
                 }
             }
             
+            console.log('Final error message:', errorMessage);
             throw new Error(errorMessage);
         }
         
