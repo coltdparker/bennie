@@ -452,7 +452,8 @@ function showSuccess() {
 
     // Compose Bennie email content
     const name = userData.name || 'friend';
-    const goalLevel = parseInt(learningGoal.value) || 1;
+    // Use currentLevel instead of trying to parse the descriptive text
+    const goalLevel = currentLevel || 1;
     let exampleLine = "I'll do my best to get you ready for casual conversation!";
     
     // Use the slider level to determine the message
