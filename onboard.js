@@ -439,7 +439,17 @@ async function handleFormSubmit(e) {
                 errorMessage = errorData.errors.join('\n');
             } else if (errorData.detail) {
                 if (Array.isArray(errorData.detail)) {
-                    errorMessage = errorData.detail.map(err => err.msg || err.message || JSON.stringify(err)).join('\n');
+                    // Handle FastAPI validation error array format
+                    errorMessage = errorData.detail
+                        .map(err => {
+                            if (typeof err === 'object' && err.loc && err.msg) {
+                                // Get the field name from the error location
+                                const field = err.loc[err.loc.length - 1];
+                                return `${field}: ${err.msg}`;
+                            }
+                            return err.msg || err.message || JSON.stringify(err);
+                        })
+                        .join('\n');
                 } else if (typeof errorData.detail === 'string') {
                     errorMessage = errorData.detail;
                 } else {
@@ -457,7 +467,23 @@ async function handleFormSubmit(e) {
         
     } catch (error) {
         console.error('Error completing onboarding:', error);
-        showError(error.message || 'Failed to complete onboarding. Please try again.');
+        
+        // Check if error.message contains a validation error message
+        let errorMessage = error.message;
+        try {
+            // Try to parse the error message in case it's a stringified JSON
+            const parsedError = JSON.parse(error.message);
+            if (parsedError.errors) {
+                errorMessage = parsedError.errors.join('\n');
+            } else if (parsedError.detail) {
+                errorMessage = parsedError.detail;
+            }
+        } catch (e) {
+            // If parsing fails, use the original error message
+            console.log('Error parsing error message:', e);
+        }
+        
+        showError(errorMessage || 'Failed to complete onboarding. Please try again.');
         
         // Re-enable submit button
         submitButton.disabled = false;

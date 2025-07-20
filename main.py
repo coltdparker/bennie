@@ -95,11 +95,13 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         message = error.get("msg", "Unknown validation error")
         error_messages.append(f"{field}: {message}")
     
+    # Log the formatted error messages
+    logger.info(f"Formatted error messages: {error_messages}")
+    
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         content={
-            "detail": "Validation error",
-            "errors": error_messages,
+            "detail": error_messages,  # Send the array of formatted messages directly
             "status_code": 422
         }
     )
