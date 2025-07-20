@@ -108,7 +108,7 @@
         
         .form-label {
             display: block;
-            font-weight: 500;
+            font-weight: 400;
             color: #1a1a1a;
             margin-bottom: 10px;
             font-size: 16px;
@@ -270,24 +270,21 @@
         /* Slider Styles */
         .slider-container {
             position: relative;
-            margin: 40px 0;
-            padding: 20px 0;
+            margin: 8px 0;
+            padding: 8px 0;
         }
         
         .speech-bubble {
-            position: absolute;
-            top: -60px;
-            left: 50%;
-            transform: translateX(-50%);
             background: white;
             border: 2px solid #FA7561;
             border-radius: 12px;
-            padding: 16px 20px;
+            padding: 20px 24px;
             box-shadow: 0 4px 12px rgba(250, 117, 97, 0.15);
-            z-index: 10;
             transition: all 0.3s ease;
             max-width: 320px;
             width: 100%;
+            margin: 44px auto 0;
+            text-align: center;
         }
         
         .speech-bubble-content {
@@ -300,30 +297,35 @@
         
         .slider-track {
             position: relative;
-            margin-top: 80px;
         }
         
         .level-markers {
+            position: absolute;
+            top: -24px;  
+            left: 0;
+            right: 0;
             display: flex;
             justify-content: space-between;
-            margin-bottom: 15px;
+            z-index: 10;
         }
         
         .level-marker {
-            width: 32px;
-            height: 32px;
+            width: 48px;
+            height: 48px;
             border-radius: 50%;
             background: #E9E2DF;
             border: 2px solid #d1d1d1;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 14px;
-            font-weight: 600;
+            font-size: 24px;
+            font-weight: 400;
             color: #4a4a4a;
             cursor: pointer;
             transition: all 0.3s ease;
             user-select: none;
+            z-index: 10;  /* Numbers appear above slider */
+            position: relative;
         }
         
 
@@ -340,6 +342,8 @@
             background: #d1d1d1;
             border-radius: 4px;
             cursor: pointer;
+            margin: 24px 24px;  /* Add horizontal padding to make slider shorter */
+            z-index: 1;  /* Slider appears below numbers */
         }
         
         .slider-handle {
@@ -350,7 +354,7 @@
             width: 24px;
             height: 24px;
             background: #FA7561;
-            border: 3px solid white;
+            border: none;
             border-radius: 50%;
             box-shadow: 0 2px 8px rgba(250, 117, 97, 0.3);
             cursor: grab;
@@ -378,9 +382,7 @@
             }
             
             .speech-bubble {
-                position: static;
-                transform: none;
-                margin-bottom: 30px;
+                margin: 20px 0;
                 max-width: none;
             }
             
@@ -420,16 +422,14 @@
                         
                         <!-- Slider Container -->
                         <div class="slider-container">
-                            <!-- Speech Bubble -->
-                            <div class="speech-bubble" id="speechBubble">
-                                <div class="speech-bubble-content">
-                                    <strong>Level 1 - Basics:</strong> Great for travel and simple conversations
-                                </div>
-                            </div>
-                            
                             <!-- Slider Track -->
                             <div class="slider-track">
-                                <!-- Level Markers -->
+                                <!-- Slider Bar (background layer) -->
+                                <div class="slider-bar">
+                                    <div class="slider-handle" id="sliderHandle"></div>
+                                </div>
+                                
+                                <!-- Level Markers (foreground layer) -->
                                 <div class="level-markers">
                                     <div class="level-marker" data-level="1">①</div>
                                     <div class="level-marker" data-level="2">②</div>
@@ -437,10 +437,12 @@
                                     <div class="level-marker" data-level="4">④</div>
                                     <div class="level-marker" data-level="5">⑤</div>
                                 </div>
-                                
-                                <!-- Slider Bar -->
-                                <div class="slider-bar">
-                                    <div class="slider-handle" id="sliderHandle"></div>
+                            </div>
+                            
+                            <!-- Speech Bubble -->
+                            <div class="speech-bubble" id="speechBubble">
+                                <div class="speech-bubble-content">
+                                    <strong>Level 1 - Basics</strong> Great for travel and simple conversations
                                 </div>
                             </div>
                             

@@ -48,11 +48,11 @@ let userToken = '';
 
 // Slider level descriptions
 const levelDescriptions = {
-    1: "Level 1 - Basics: Great for travel and simple conversations",
-    2: "Level 2 - Getting Comfortable: I want to have basic conversations and understand more",
-    3: "Level 3 - Conversational: I want to chat naturally with native speakers",
-    4: "Level 4 - Advanced: I want to express complex ideas and understand nuances",
-    5: "Level 5 - Fluent: I'm in it for the long haul and want native level fluency!"
+    1: "Level 1 - Basics\nGreat for travel and simple conversations",
+    2: "Level 2 - Getting Comfortable\nI want to have basic conversations and understand more",
+    3: "Level 3 - Conversational\nI want to chat naturally with native speakers",
+    4: "Level 4 - Advanced\nI want to express complex ideas and understand nuances",
+    5: "Level 5 - Fluent\nI'm in it for the long haul and want native level fluency!"
 };
 
 // Current slider level
@@ -253,12 +253,13 @@ function updateSlider(level) {
     console.log('updateSlider called with level:', level);
     currentLevel = level;
     
-    // Update hidden input value
-    learningGoal.value = level;
+    // Update hidden input value with descriptive text
+    learningGoal.value = levelDescriptions[level];
     
     // Update speech bubble content
     const speechBubbleContent = speechBubble.querySelector('.speech-bubble-content');
-    speechBubbleContent.innerHTML = `<strong>${levelDescriptions[level].split(':')[0]}:</strong> ${levelDescriptions[level].split(':')[1]}`;
+    const levelText = levelDescriptions[level].split('\n');
+    speechBubbleContent.innerHTML = `<strong>${levelText[0]}</strong><br>${levelText[1]}`;
     
     // Update slider handle position
     const percentage = ((level - 1) / 4) * 100; // Convert to 0-100%
