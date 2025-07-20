@@ -26,7 +26,7 @@
     /* Spacing */
     --section-spacing: 1rem;  /* Reduced from 8rem to 3rem */
     --content-width: 1200px;
-    --section-padding: 2rem;
+    --section-padding: 1rem;
 }
 
 /* Global styles */
@@ -703,7 +703,7 @@ html, body {
     text-align: center;
     padding: 2rem 0 2rem 0;
     font-size: 0.9rem;
-    margin-top: auto;
+    margin-top: 60px;
     border-top: none;
 }
 
