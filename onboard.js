@@ -28,6 +28,7 @@ const languageToCountry = {
 const onboardForm = document.getElementById('onboardForm');
 const skillButtons = document.getElementById('skillButtons');
 const learningGoal = document.getElementById('learningGoal');
+const targetProficiency = document.getElementById('targetProficiency');
 const motivationGoal = document.getElementById('motivationGoal');
 const topicsOfInterest = document.getElementById('topicsOfInterest');
 const submitButton = document.getElementById('submitButton');
@@ -271,100 +272,142 @@ function initializeSlider() {
     });
 }
 
+/**
+ * Updates the slider UI and form state
+ * @param {number} level - The selected level (1-5)
+ */
 function updateSlider(level) {
-    console.log('updateSlider called with level:', level);
-    currentLevel = level;
-    
-    // Update hidden input value with descriptive text
-    learningGoal.value = levelDescriptions[level];
-    
-    // Update speech bubble content
+    // Input validation
+    if (!Number.isInteger(level) || level < 1 || level > 5) {
+        console.error('Invalid slider level:', level);
+        return;
+    }
+
+    // Update UI
+    const percentage = ((level - 1) / 4) * 100;
+    sliderHandle.style.left = `${percentage}%`;
+    sliderHandle.style.display = 'block';
+
+    // Update speech bubble
     const speechBubbleContent = speechBubble.querySelector('.speech-bubble-content');
     const levelText = levelDescriptions[level].split('\n');
     speechBubbleContent.innerHTML = `<strong>${levelText[0]}</strong><br>${levelText[1]}`;
-    
-    // Update slider handle position
-    const percentage = ((level - 1) / 4) * 100; // Convert to 0-100%
-    console.log('Setting slider handle to percentage:', percentage);
-    console.log('Slider handle element:', sliderHandle);
-    console.log('Slider handle computed style:', window.getComputedStyle(sliderHandle));
-    
-    sliderHandle.style.left = `${percentage}%`;
-    sliderHandle.style.display = 'block';
-    
-    // Debug: Check if handle is visible after positioning
-    setTimeout(() => {
-        const rect = sliderHandle.getBoundingClientRect();
-        console.log('Slider handle position after update:', rect);
-        console.log('Slider handle visibility:', rect.width > 0 && rect.height > 0);
-    }, 100);
-    
+
     // Update level markers
     levelMarkers.forEach(marker => {
         const markerLevel = parseInt(marker.dataset.level);
-        if (markerLevel === level) {
-            marker.classList.add('active');
-            console.log('Activated marker:', markerLevel);
-        } else {
-            marker.classList.remove('active');
-        }
+        marker.classList.toggle('active', markerLevel === level);
     });
-    
-    // Speech bubble stays centered, no positioning updates needed
+
+    // Update form state
+    const mappedProficiency = proficiencyMapping[level];
+    if (!mappedProficiency) {
+        console.error('Failed to map proficiency for level:', level);
+        return;
+    }
+
+    // Update hidden form fields
+    learningGoal.value = levelDescriptions[level];
+    targetProficiency.value = mappedProficiency;
+
+    // Debug logging
+    console.log('Slider updated:', {
+        level,
+        percentage,
+        mappedProficiency,
+        description: levelDescriptions[level]
+    });
 }
 
+/**
+ * Validates the form data before submission
+ * @param {Object} formData - The form data to validate
+ * @returns {string[]} Array of error messages, empty if valid
+ */
+function validateFormData(formData) {
+    const errors = [];
+
+    // Validate skill level (1-100 scale)
+    if (!Number.isInteger(formData.skillLevel) || formData.skillLevel < 1 || formData.skillLevel > 100) {
+        errors.push('Please select at least one sentence to assess your current level.');
+    }
+
+    // Validate target proficiency (20-100 scale, must be one of the mapped values)
+    const validProficiencies = Object.values(proficiencyMapping);
+    if (!validProficiencies.includes(formData.targetProficiency)) {
+        errors.push('Please select your target proficiency level using the slider.');
+    }
+
+    // Validate learning goal text
+    if (!formData.learningGoal?.trim()) {
+        errors.push('Please select a learning goal using the slider.');
+    }
+
+    // Validate motivation goal
+    if (!formData.motivationGoal?.trim()) {
+        errors.push('Please tell us what motivates you to learn.');
+    } else if (formData.motivationGoal.length > 600) {
+        errors.push('Motivation text is too long. Please keep it under 600 characters.');
+    }
+
+    // Validate topics of interest
+    if (!formData.topicsOfInterest?.trim()) {
+        errors.push('Please enter at least one topic of interest.');
+    }
+
+    return errors;
+}
+
+/**
+ * Handles form submission
+ * @param {Event} e - The submit event
+ */
 async function handleFormSubmit(e) {
     e.preventDefault();
-    
+
+    // Calculate current skill level
     const selectedButtons = document.querySelectorAll('.skill-button.selected');
     const selectedLevels = Array.from(selectedButtons).map(btn => parseInt(btn.dataset.level));
-    
-    // Calculate average difficulty on 1-100 scale
     const avgLevel = selectedLevels.length > 0 
         ? Math.round(selectedLevels.reduce((a, b) => a + b, 0) / selectedLevels.length)
         : 10; // Default to basic level if nothing selected
-    
-    // Debug logging for skill level calculation
-    console.log('Selected buttons:', selectedButtons.length);
-    console.log('Selected levels:', selectedLevels);
-    console.log('Calculated avgLevel:', avgLevel);
-    console.log('Current slider level:', currentLevel);
-    console.log('Mapped proficiency:', proficiencyMapping[currentLevel]);
-    
+
     // Prepare form data
     const formData = {
         skillLevel: avgLevel,
-        selectedSentences: selectedLevels,
+        targetProficiency: parseInt(targetProficiency.value),
         learningGoal: learningGoal.value,
-        targetProficiency: proficiencyMapping[currentLevel],
         motivationGoal: motivationGoal.value.trim(),
         topicsOfInterest: topicsOfInterest.value.trim()
     };
-    
-    // Log complete form data for debugging
-    console.log('Form data before validation:', formData);
-    
+
     // Validate form data
     const errors = validateFormData(formData);
     if (errors.length > 0) {
         showError(errors.join('\n'));
         return;
     }
-    
+
     // Prepare request data
     const requestData = {
         token: userToken,
         skill_level: formData.skillLevel,
-        learning_goal: formData.learningGoal,
         target_proficiency: formData.targetProficiency,
+        learning_goal: formData.learningGoal,
         motivation_goal: formData.motivationGoal,
         topics_of_interest: formData.topicsOfInterest
     };
-    
-    // Log request data for debugging
-    console.log('Request data:', requestData);
-    
+
+    // Debug logging
+    console.log('Submitting form data:', {
+        formData,
+        requestData,
+        selectedLevels,
+        avgLevel
+    });
+
     try {
+        // Update button state
         submitButton.disabled = true;
         submitButton.innerHTML = `
             <span>Updating your profile...</span>
@@ -372,54 +415,55 @@ async function handleFormSubmit(e) {
                 <path d="M21 12a9 9 0 11-6.219-8.56"/>
             </svg>
         `;
-        
+
+        // Submit to backend
         const response = await fetch('/api/complete-onboarding', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(requestData)
         });
-        
+
         if (!response.ok) {
             const errorData = await response.json();
-            console.error('Error response:', errorData);
-            
-            let errorMessage = 'Failed to complete onboarding';
-            
-            if (errorData.detail) {
-                if (Array.isArray(errorData.detail)) {
-                    errorMessage = errorData.detail
-                        .map(err => {
-                            if (typeof err === 'object' && err.loc && err.msg) {
-                                const field = err.loc[err.loc.length - 1];
-                                return `${field}: ${err.msg}`;
-                            }
-                            return err.msg || err.message || JSON.stringify(err);
-                        })
-                        .join('\n');
-                } else if (typeof errorData.detail === 'string') {
-                    errorMessage = errorData.detail;
-                } else {
-                    errorMessage = JSON.stringify(errorData.detail);
-                }
-            }
-            
-            throw new Error(errorMessage);
+            throw new Error(formatErrorMessage(errorData));
         }
-        
+
         const result = await response.json();
         console.log('Onboarding completed:', result);
         showSuccess();
-        
+
     } catch (error) {
         console.error('Error completing onboarding:', error);
         showError(error.message || 'Failed to complete onboarding. Please try again.');
-        
-        // Re-enable submit button
         submitButton.disabled = false;
         submitButton.innerHTML = 'Complete My Profile';
     }
+}
+
+/**
+ * Formats error messages from the API response
+ * @param {Object} errorData - The error response from the API
+ * @returns {string} Formatted error message
+ */
+function formatErrorMessage(errorData) {
+    if (!errorData) return 'An unknown error occurred';
+
+    if (errorData.detail) {
+        if (Array.isArray(errorData.detail)) {
+            return errorData.detail
+                .map(err => {
+                    if (typeof err === 'object' && err.loc && err.msg) {
+                        const field = err.loc[err.loc.length - 1];
+                        return `${field}: ${err.msg}`;
+                    }
+                    return err.msg || err.message || JSON.stringify(err);
+                })
+                .join('\n');
+        }
+        return errorData.detail;
+    }
+
+    return JSON.stringify(errorData);
 }
 
 function showError(message) {
