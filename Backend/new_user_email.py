@@ -11,7 +11,7 @@ def get_language_greeting(user_language: str) -> str:
     Returns a fun greeting in the user's target language.
     
     Args:
-        user_language (str): The language code (spanish, french, chinese, japanese, german, italian)
+        user_language (str): The language code (spanish, french, mandarin, japanese, german, italian)
     
     Returns:
         str: A greeting in the target language
@@ -19,13 +19,16 @@ def get_language_greeting(user_language: str) -> str:
     language_greetings = {
         'spanish': '¡Hola! ¿Cómo estás?',
         'french': 'Salut ! Comment ça va ?',
-        'chinese': '你好！你最近好吗？',
+        'mandarin': '你好！你最近好吗？',  # Changed from 'chinese' to 'mandarin'
         'japanese': 'こんにちは！お元気ですか？',
         'german': 'Hallo! Wie geht es dir?',
         'italian': 'Ciao! Come stai?'
     }
     
     language_clean = user_language.lower().strip()
+    # Handle both 'mandarin' and 'chinese' for backward compatibility
+    if language_clean == 'chinese':
+        language_clean = 'mandarin'
     return language_greetings.get(language_clean, f'Hello! How are you? (Learning {user_language.title()})')
 
 def get_language_name(user_language: str) -> str:
@@ -35,13 +38,16 @@ def get_language_name(user_language: str) -> str:
     language_names = {
         'spanish': 'Spanish',
         'french': 'French',
-        'chinese': 'Mandarin Chinese',
+        'mandarin': 'Mandarin Chinese',  # Changed from 'chinese' to 'mandarin'
         'japanese': 'Japanese',
         'german': 'German',
         'italian': 'Italian'
     }
     
     language_clean = user_language.lower().strip()
+    # Handle both 'mandarin' and 'chinese' for backward compatibility
+    if language_clean == 'chinese':
+        language_clean = 'mandarin'
     return language_names.get(language_clean, user_language.title())
 
 def create_welcome_email_html(user_name: str, user_language: str, user_token: str = None) -> str:
