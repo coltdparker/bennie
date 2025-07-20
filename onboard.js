@@ -64,7 +64,16 @@ document.addEventListener('DOMContentLoaded', function() {
     userToken = urlParams.get('token');
     
     // Initialize slider immediately (regardless of token status)
+    console.log('DOM loaded, initializing slider...');
     initializeSlider();
+    
+    // Fallback: Try to initialize slider again after a short delay
+    setTimeout(() => {
+        if (!sliderHandle || sliderHandle.style.display === 'none') {
+            console.log('Slider not initialized properly, retrying...');
+            initializeSlider();
+        }
+    }, 500);
     
     if (!userToken) {
         showError('Invalid access token. Please check your email link.');
@@ -264,7 +273,18 @@ function updateSlider(level) {
     // Update slider handle position
     const percentage = ((level - 1) / 4) * 100; // Convert to 0-100%
     console.log('Setting slider handle to percentage:', percentage);
+    console.log('Slider handle element:', sliderHandle);
+    console.log('Slider handle computed style:', window.getComputedStyle(sliderHandle));
+    
     sliderHandle.style.left = `${percentage}%`;
+    sliderHandle.style.display = 'block';
+    
+    // Debug: Check if handle is visible after positioning
+    setTimeout(() => {
+        const rect = sliderHandle.getBoundingClientRect();
+        console.log('Slider handle position after update:', rect);
+        console.log('Slider handle visibility:', rect.width > 0 && rect.height > 0);
+    }, 100);
     
     // Update level markers
     levelMarkers.forEach(marker => {
