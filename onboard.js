@@ -500,31 +500,33 @@ function showSuccess() {
 
     // Compose Bennie email content
     const name = userData.name || 'friend';
-    // Use currentLevel instead of trying to parse the descriptive text
-    const goalLevel = currentLevel || 1;
-    let exampleLine = "I'll do my best to get you ready for casual conversation!";
     
-    // Use the slider level to determine the message
+    // Get the current level from the slider
+    const goalLevel = parseInt(targetProficiency.value);
+    let exampleLine = '';
+    
+    // Match exactly with proficiencyMapping values
     switch(goalLevel) {
-        case 1:
-            exampleLine = "I'll help you get comfortable with the basics for travel and simple conversations!";
+        case 20:  // Level 1 - Basics
+            exampleLine = "I'll help you master the basics for travel and simple conversations! We'll start with everyday phrases and gradually build your confidence.";
             break;
-        case 2:
-            exampleLine = "Let's build your confidence with basic conversations and understanding!";
+        case 40:  // Level 2 - Getting Comfortable
+            exampleLine = "We'll focus on building your conversational skills and vocabulary. Soon you'll be comfortable with basic discussions and understanding more complex topics!";
             break;
-        case 3:
-            exampleLine = "I'll help you chat naturally with native speakers and feel comfortable in conversations!";
+        case 60:  // Level 3 - Conversational
+            exampleLine = "I'll help you develop natural fluency in conversations. We'll work on idioms, cultural expressions, and confident communication with native speakers!";
             break;
-        case 4:
-            exampleLine = "Let's work on expressing complex ideas and understanding the nuances of the language!";
+        case 80:  // Level 4 - Advanced
+            exampleLine = "Get ready to express complex ideas and understand subtle nuances! We'll dive into sophisticated topics and advanced language patterns.";
             break;
-        case 5:
-            exampleLine = "Let's buckle down and start getting you all the way to fluency. If you put in the work, I promise to help you along the way!";
+        case 100: // Level 5 - Fluent
+            exampleLine = "I'm excited to guide you toward native-level fluency! We'll work on mastering every aspect of the language, from colloquialisms to cultural context.";
             break;
         default:
-            exampleLine = "I'll do my best to get you ready for casual conversation!";
+            exampleLine = "I'll help you on your language learning journey! We'll work together to reach your goals.";
     }
-    const emailText = `Hello ${name},<br><br>It's great getting to know your motivation. Can't wait to chat!<br><br>${exampleLine}<br><br>Your pal,<br>Bennie`;
+
+    const emailText = `Hello ${name},<br><br>It's great getting to know your goals and where your motivation is coming from. Can't wait to chat!<br><br>${exampleLine}<br><br>Your pal,<br>Bennie`;
     const emailContentDiv = document.getElementById('bennieEmailContent');
     const emailPlaceholder = document.getElementById('bennieEmailPlaceholder');
     if (emailContentDiv) {
