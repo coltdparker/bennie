@@ -140,7 +140,7 @@ async def verify_token(token: str):
 
 class OnboardingData(BaseModel):
     token: str
-    skill_level: int = Field(..., ge=1, le=10)  # Must be between 1 and 10
+    skill_level: int = Field(..., ge=1, le=12)  # Must be between 1 and 12 (not 10)
     learning_goal: str = Field(..., min_length=1, max_length=1000)  # Descriptive text from slider
     target_proficiency: int = Field(..., ge=20, le=100)  # Numeric level 20-100 from slider mapping
     motivation_goal: str = Field(..., min_length=1, max_length=1000)
@@ -161,22 +161,25 @@ async def complete_onboarding(onboarding_data: OnboardingData):
         HTTPException: If token is invalid or update fails
     """
     try:
-        logger.info(f"Completing onboarding for token: {onboarding_data.token[:10]}... with target_proficiency: {onboarding_data.target_proficiency}")
-        logger.info(f"Full onboarding data received: {onboarding_data}")
+        logger.info(f"Completing onboarding for token: {onboarding_data.token[:10]}...")
+        logger.info(f"Received data - skill_level: {onboarding_data.skill_level}, target_proficiency: {onboarding_data.target_proficiency}")
+        logger.info(f"Data validation passed for all fields")
         
         # First verify the token and get user
         verify_response = supabase.table("users").select("id").eq("verification_token", onboarding_data.token).execute()
         
         if not verify_response.data or len(verify_response.data) == 0:
+            logger.warning(f"Invalid token attempted: {onboarding_data.token[:10]}...")
             raise HTTPException(status_code=404, detail="Invalid or expired token")
         
         user_id = verify_response.data[0]["id"]
+        logger.info(f"Token verified for user_id: {user_id}")
         
         # Update user with onboarding information
         update_data = {
             "proficiency_level": onboarding_data.skill_level,
             "learning_goal": onboarding_data.learning_goal,
-            "target_proficiency": onboarding_data.target_proficiency,  # Store numeric level 1-5
+            "target_proficiency": onboarding_data.target_proficiency,  # Store numeric level 20-100
             "motivation_goal": onboarding_data.motivation_goal,
             "topics_of_interest": onboarding_data.topics_of_interest,
             "is_verified": True,
@@ -184,13 +187,14 @@ async def complete_onboarding(onboarding_data: OnboardingData):
             "updated_at": "now()"
         }
         
+        logger.info(f"Updating user {user_id} with data: {update_data}")
         update_response = supabase.table("users").update(update_data).eq("id", user_id).execute()
         
         if hasattr(update_response, 'status_code') and update_response.status_code >= 400:
-            logger.error(f"Error updating user: {update_response}")
+            logger.error(f"Database update error for user {user_id}: {update_response}")
             raise HTTPException(status_code=500, detail=f"Failed to update user: {update_response}")
         
-        logger.info(f"Onboarding completed successfully for user ID: {user_id}")
+        logger.info(f"✓ Onboarding completed successfully for user ID: {user_id}")
         
         return {
             "success": True,
