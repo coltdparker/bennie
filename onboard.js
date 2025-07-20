@@ -324,18 +324,27 @@ async function handleFormSubmit(e) {
         5: 100  // Fluent
     };
     
+    const mappedProficiency = proficiencyMapping[currentLevel];
+    
+    // Safety check for undefined mapping
+    if (mappedProficiency === undefined) {
+        console.error('Invalid currentLevel:', currentLevel);
+        showError('Invalid learning level selected. Please try again.');
+        return;
+    }
+    
     const formData = {
         skillLevel: avgLevel,
         selectedSentences: selectedLevels,
         learningGoal: learningGoal.value, // Descriptive text from slider
-        targetProficiency: proficiencyMapping[currentLevel], // Mapped to 0-100 scale
+        targetProficiency: mappedProficiency, // Mapped to 0-100 scale
         motivationGoal: motivationGoal.value.trim(),
         topicsOfInterest: topicsOfInterest.value.trim()
     };
     
     // Debug logging for proficiency mapping
     console.log('Current slider level:', currentLevel);
-    console.log('Mapped target proficiency:', proficiencyMapping[currentLevel]);
+    console.log('Mapped target proficiency:', mappedProficiency);
     
     if (!formData.motivationGoal || !formData.topicsOfInterest || selectedLevels.length === 0) {
         showError('Please fill in all fields and select at least one sentence!');
