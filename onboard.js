@@ -361,6 +361,8 @@ async function handleFormSubmit(e) {
             topics_of_interest: formData.topicsOfInterest
         };
         console.log('Sending onboarding data:', requestData);
+        console.log('target_proficiency value:', formData.targetProficiency);
+        console.log('target_proficiency type:', typeof formData.targetProficiency);
         
         // Submit to backend
         const response = await fetch('/api/complete-onboarding', {

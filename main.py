@@ -161,7 +161,7 @@ async def complete_onboarding(onboarding_data: OnboardingData):
         HTTPException: If token is invalid or update fails
     """
     try:
-        logger.info(f"Completing onboarding for token: {onboarding_data.token[:10]}...")
+        logger.info(f"Completing onboarding for token: {onboarding_data.token[:10]}... with target_proficiency: {onboarding_data.target_proficiency}")
         
         # First verify the token and get user
         verify_response = supabase.table("users").select("id").eq("verification_token", onboarding_data.token).execute()
