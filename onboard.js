@@ -18,8 +18,7 @@ const skillSentences = [
 const languageToCountry = {
     spanish: "Spain",
     french: "France",
-    chinese: "China",
-    mandarin: "China",
+    mandarin: "China",  // Standardize on mandarin
     japanese: "Japan",
     german: "Germany",
     italian: "Italy"
@@ -55,8 +54,17 @@ const levelDescriptions = {
     5: "Level 5 - Fluent\nI'm in it for the long haul and want native level fluency!"
 };
 
+// Proficiency mapping (1-5 scale to 20-100)
+const proficiencyMapping = {
+    1: 20,  // Basics
+    2: 40,  // Getting Comfortable
+    3: 60,  // Conversational
+    4: 80,  // Advanced
+    5: 100  // Fluent
+};
+
 // Current slider level
-let currentLevel = 1;
+let currentLevel = 1;  // Initialize to level 1 (20% proficiency)
 
 // Initialize
 document.addEventListener('DOMContentLoaded', function() {
@@ -189,7 +197,12 @@ function initializeSlider() {
     }
     
     // Set initial state
-    updateSlider(1);
+    updateSlider(1);  // Start at level 1 (20% proficiency)
+    
+    // Ensure the initial proficiency is set
+    const initialProficiency = proficiencyMapping[currentLevel];
+    console.log('Initial slider level:', currentLevel);
+    console.log('Initial proficiency mapping:', initialProficiency);
     
     // Add click handlers for level markers
     levelMarkers.forEach(marker => {
@@ -315,115 +328,51 @@ async function handleFormSubmit(e) {
     console.log('Selected buttons:', selectedButtons.length);
     console.log('Selected levels:', selectedLevels);
     console.log('Calculated avgLevel:', avgLevel);
-    console.log('avgLevel type:', typeof avgLevel);
+    console.log('Current slider level:', currentLevel);
+    console.log('Mapped proficiency:', proficiencyMapping[currentLevel]);
     
-    // Map slider level to target proficiency (1-100 scale)
-    const proficiencyMapping = {
-        1: 20,  // Basics
-        2: 40,  // Getting Comfortable
-        3: 60,  // Conversational
-        4: 80,  // Advanced
-        5: 100  // Fluent
-    };
-    
-    const mappedProficiency = proficiencyMapping[currentLevel];
-    
-    // Safety check for undefined mapping
-    if (mappedProficiency === undefined) {
-        console.error('Invalid currentLevel:', currentLevel);
-        showError('Please select your target proficiency level using the slider.');
-        return;
-    }
-    
+    // Prepare form data
     const formData = {
-        skillLevel: avgLevel, // This is now on 1-100 scale
+        skillLevel: avgLevel,
         selectedSentences: selectedLevels,
-        learningGoal: learningGoal.value, // Descriptive text from slider
-        targetProficiency: mappedProficiency, // Already on 1-100 scale
+        learningGoal: learningGoal.value,
+        targetProficiency: proficiencyMapping[currentLevel],
         motivationGoal: motivationGoal.value.trim(),
         topicsOfInterest: topicsOfInterest.value.trim()
     };
     
-    // Debug logging for proficiency mapping
-    console.log('Current slider level:', currentLevel);
-    console.log('Mapped target proficiency:', mappedProficiency);
+    // Log complete form data for debugging
+    console.log('Form data before validation:', formData);
     
-    // Validate form data before submission
-    const validateFormData = (formData) => {
-        const errors = [];
-        
-        // Validate skill level (now on 1-100 scale)
-        if (typeof formData.skillLevel !== 'number' || isNaN(formData.skillLevel) || formData.skillLevel < 1 || formData.skillLevel > 100) {
-            errors.push('Please select at least one sentence to assess your current level.');
-        }
-        
-        // Validate slider level (1-5 UI scale)
-        if (!currentLevel || currentLevel < 1 || currentLevel > 5) {
-            errors.push('Please select your target proficiency level using the slider.');
-            return errors; // Return early as this is critical
-        }
-        
-        // Validate learning goal text
-        if (!formData.learningGoal || formData.learningGoal.trim().length === 0) {
-            errors.push('Please select a learning goal using the slider.');
-        }
-        
-        // Validate target proficiency (1-100 scale from slider mapping)
-        const mappedProf = proficiencyMapping[currentLevel];
-        if (!mappedProf || mappedProf < 20 || mappedProf > 100) {
-            errors.push('Please select your target proficiency level using the slider.');
-        }
-        
-        // Validate motivation goal
-        if (!formData.motivationGoal || formData.motivationGoal.trim().length === 0) {
-            errors.push('Please tell us what motivates you to learn.');
-        } else if (formData.motivationGoal.length > 600) {
-            errors.push('Motivation text is too long. Please keep it under 600 characters.');
-        }
-        
-        // Validate topics of interest
-        if (!formData.topicsOfInterest || formData.topicsOfInterest.trim().length === 0) {
-            errors.push('Please enter at least one topic of interest.');
-        }
-        
-        return errors;
-    };
-
-    // Add validation before sending data
+    // Validate form data
     const errors = validateFormData(formData);
     if (errors.length > 0) {
         showError(errors.join('\n'));
         return;
     }
-
-    submitButton.disabled = true;
-    submitButton.innerHTML = `
-        <span>Updating your profile...</span>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spinning">
-            <path d="M21 12a9 9 0 11-6.219-8.56"/>
-        </svg>
-    `;
+    
+    // Prepare request data
+    const requestData = {
+        token: userToken,
+        skill_level: formData.skillLevel,
+        learning_goal: formData.learningGoal,
+        target_proficiency: formData.targetProficiency,
+        motivation_goal: formData.motivationGoal,
+        topics_of_interest: formData.topicsOfInterest
+    };
+    
+    // Log request data for debugging
+    console.log('Request data:', requestData);
     
     try {
-        // Log the data being sent
-        const requestData = {
-            token: userToken,
-            skill_level: avgLevel, // Use avgLevel directly
-            learning_goal: formData.learningGoal,
-            target_proficiency: mappedProficiency,  // Use mappedProficiency directly
-            motivation_goal: formData.motivationGoal,
-            topics_of_interest: formData.topicsOfInterest
-        };
+        submitButton.disabled = true;
+        submitButton.innerHTML = `
+            <span>Updating your profile...</span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spinning">
+                <path d="M21 12a9 9 0 11-6.219-8.56"/>
+            </svg>
+        `;
         
-        // Debug logging
-        console.log('Sending onboarding data:', requestData);
-        console.log('target_proficiency value:', mappedProficiency);
-        console.log('target_proficiency type:', typeof mappedProficiency);
-        console.log('skill_level value:', avgLevel);
-        console.log('skill_level type:', typeof avgLevel);
-        console.log('current slider level:', currentLevel);
-        
-        // Submit to backend
         const response = await fetch('/api/complete-onboarding', {
             method: 'POST',
             headers: {
@@ -432,24 +381,17 @@ async function handleFormSubmit(e) {
             body: JSON.stringify(requestData)
         });
         
-        console.log('Response status:', response.status);
-        
         if (!response.ok) {
             const errorData = await response.json();
             console.error('Error response:', errorData);
             
             let errorMessage = 'Failed to complete onboarding';
             
-            if (errorData.errors && Array.isArray(errorData.errors)) {
-                // Handle our new validation error format
-                errorMessage = errorData.errors.join('\n');
-            } else if (errorData.detail) {
+            if (errorData.detail) {
                 if (Array.isArray(errorData.detail)) {
-                    // Handle FastAPI validation error array format
                     errorMessage = errorData.detail
                         .map(err => {
                             if (typeof err === 'object' && err.loc && err.msg) {
-                                // Get the field name from the error location
                                 const field = err.loc[err.loc.length - 1];
                                 return `${field}: ${err.msg}`;
                             }
@@ -463,7 +405,6 @@ async function handleFormSubmit(e) {
                 }
             }
             
-            console.log('Final error message:', errorMessage);
             throw new Error(errorMessage);
         }
         
@@ -473,23 +414,7 @@ async function handleFormSubmit(e) {
         
     } catch (error) {
         console.error('Error completing onboarding:', error);
-        
-        // Check if error.message contains a validation error message
-        let errorMessage = error.message;
-        try {
-            // Try to parse the error message in case it's a stringified JSON
-            const parsedError = JSON.parse(error.message);
-            if (parsedError.errors) {
-                errorMessage = parsedError.errors.join('\n');
-            } else if (parsedError.detail) {
-                errorMessage = parsedError.detail;
-            }
-        } catch (e) {
-            // If parsing fails, use the original error message
-            console.log('Error parsing error message:', e);
-        }
-        
-        showError(errorMessage || 'Failed to complete onboarding. Please try again.');
+        showError(error.message || 'Failed to complete onboarding. Please try again.');
         
         // Re-enable submit button
         submitButton.disabled = false;

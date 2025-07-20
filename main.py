@@ -190,9 +190,10 @@ async def complete_onboarding(onboarding_data: OnboardingData):
         HTTPException: If token is invalid or update fails
     """
     try:
-        logger.info(f"Completing onboarding for token: {onboarding_data.token[:10]}...")
-        logger.info(f"Received data - skill_level: {onboarding_data.skill_level}, target_proficiency: {onboarding_data.target_proficiency}")
-        logger.info(f"Data validation passed for all fields")
+        # Log all incoming data (except token)
+        log_data = onboarding_data.dict()
+        log_data["token"] = log_data["token"][:10] + "..."  # Truncate token for logging
+        logger.info(f"Received onboarding data: {log_data}")
         
         # First verify the token and get user
         verify_response = supabase.table("users").select("id").eq("verification_token", onboarding_data.token).execute()
@@ -208,7 +209,7 @@ async def complete_onboarding(onboarding_data: OnboardingData):
         update_data = {
             "proficiency_level": onboarding_data.skill_level,
             "learning_goal": onboarding_data.learning_goal,
-            "target_proficiency": onboarding_data.target_proficiency,  # Store numeric level 20-100
+            "target_proficiency": onboarding_data.target_proficiency,
             "motivation_goal": onboarding_data.motivation_goal,
             "topics_of_interest": onboarding_data.topics_of_interest,
             "is_verified": True,
