@@ -112,6 +112,85 @@ body {
     text-align: center;
 }
 
+.hero-tagline {
+    display: block;
+    margin-top: 1rem;
+    font-size: clamp(0.9rem, 2.5vw, 1.1rem);
+    color: var(--bittersweet);
+    font-weight: 500;
+}
+
+/* Immersion Section */
+.immersion-section {
+    margin-top: 6rem;
+    padding: 4rem 2rem;
+    background: white;
+    border-radius: 20px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border-light);
+}
+
+.immersion-content {
+    max-width: 1000px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+.immersion-content h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 2.5rem;
+    font-weight: 600;
+    color: var(--bittersweet);
+    margin-bottom: 1.5rem;
+}
+
+.immersion-content > p {
+    font-size: 1.2rem;
+    color: var(--text-secondary);
+    margin-bottom: 3rem;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.immersion-features {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+    margin-top: 3rem;
+}
+
+.immersion-feature {
+    text-align: center;
+    padding: 2rem;
+    background: var(--platinum);
+    border-radius: 16px;
+    transition: transform 0.3s ease;
+}
+
+.immersion-feature:hover {
+    transform: translateY(-5px);
+}
+
+.feature-icon {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+}
+
+.immersion-feature h4 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+}
+
+.immersion-feature p {
+    font-size: 1rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
 /* Email Section */
 .email-section {
     margin-top: 2rem;
@@ -610,6 +689,24 @@ body {
     
     .email-button {
         border-radius: 0 0 20px 20px;
+    }
+
+    .immersion-features {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+    
+    .immersion-section {
+        margin-top: 4rem;
+        padding: 3rem 1.5rem;
+    }
+    
+    .immersion-content h2 {
+        font-size: 2rem;
+    }
+    
+    .immersion-content > p {
+        font-size: 1.1rem;
     }
 }
 
