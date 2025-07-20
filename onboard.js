@@ -318,7 +318,8 @@ async function handleFormSubmit(e) {
     const formData = {
         skillLevel: avgLevel,
         selectedSentences: selectedLevels,
-        learningGoal: learningGoal.value, // This is now the slider level (1-5)
+        learningGoal: learningGoal.value, // Descriptive text from slider
+        targetProficiency: currentLevel, // Numeric level 1-5 from slider
         motivationGoal: motivationGoal.value.trim(),
         topicsOfInterest: topicsOfInterest.value.trim()
     };
@@ -342,6 +343,7 @@ async function handleFormSubmit(e) {
             token: userToken,
             skill_level: formData.skillLevel,
             learning_goal: formData.learningGoal,
+            target_proficiency: formData.targetProficiency,
             motivation_goal: formData.motivationGoal,
             topics_of_interest: formData.topicsOfInterest
         };

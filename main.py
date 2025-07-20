@@ -141,7 +141,8 @@ async def verify_token(token: str):
 class OnboardingData(BaseModel):
     token: str
     skill_level: int = Field(..., ge=1, le=10)  # Must be between 1 and 10
-    learning_goal: str = Field(..., min_length=1, max_length=1000)
+    learning_goal: str = Field(..., min_length=1, max_length=1000)  # Descriptive text from slider
+    target_proficiency: int = Field(..., ge=1, le=5)  # Numeric level 1-5 from slider
     motivation_goal: str = Field(..., min_length=1, max_length=1000)
     topics_of_interest: str = Field(..., min_length=1, max_length=1000)
 
@@ -174,6 +175,7 @@ async def complete_onboarding(onboarding_data: OnboardingData):
         update_data = {
             "proficiency_level": onboarding_data.skill_level,
             "learning_goal": onboarding_data.learning_goal,
+            "target_proficiency": onboarding_data.target_proficiency,  # Store numeric level 1-5
             "motivation_goal": onboarding_data.motivation_goal,
             "topics_of_interest": onboarding_data.topics_of_interest,
             "is_verified": True,
