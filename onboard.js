@@ -1,17 +1,17 @@
 // Skill assessment sentences
 const skillSentences = [
-    { text: "Hello, how are you?", level: 1, category: "Basic Greetings" },
-    { text: "My name is [name] and I'm from [country].", level: 2, category: "Self Introduction" },
-    { text: "I would like to order a coffee, please.", level: 3, category: "Basic Requests" },
-    { text: "What time does the restaurant close?", level: 4, category: "Questions" },
-    { text: "I've been studying this language for two years.", level: 5, category: "Past Tense" },
-    { text: "If I had more time, I would travel more often.", level: 6, category: "Conditionals" },
-    { text: "The weather is beautiful today, isn't it?", level: 7, category: "Conversational" },
-    { text: "I'm looking forward to visiting the museum tomorrow.", level: 8, category: "Future Plans" },
-    { text: "Despite the rain, we decided to go for a walk.", level: 9, category: "Complex Sentences" },
-    { text: "The book that I'm reading is quite fascinating.", level: 10, category: "Advanced Grammar" },
-    { text: "I can express my opinions on complex topics fluently.", level: 11, category: "Advanced Communication" },
-    { text: "The cultural nuances come naturally to me now.", level: 12, category: "Native-like" }
+    { text: "Hello, how are you?", level: 10, category: "Basic Greetings" },
+    { text: "My name is [name] and I'm from [country].", level: 20, category: "Self Introduction" },
+    { text: "I would like to order a coffee, please.", level: 30, category: "Basic Requests" },
+    { text: "What time does the restaurant close?", level: 40, category: "Questions" },
+    { text: "I've been studying this language for two years.", level: 50, category: "Past Tense" },
+    { text: "If I had more time, I would travel more often.", level: 60, category: "Conditionals" },
+    { text: "The weather is beautiful today, isn't it?", level: 65, category: "Conversational" },
+    { text: "I'm looking forward to visiting the museum tomorrow.", level: 70, category: "Future Plans" },
+    { text: "Despite the rain, we decided to go for a walk.", level: 80, category: "Complex Sentences" },
+    { text: "The book that I'm reading is quite fascinating.", level: 85, category: "Advanced Grammar" },
+    { text: "I can express my opinions on complex topics fluently.", level: 90, category: "Advanced Communication" },
+    { text: "The cultural nuances come naturally to me now.", level: 100, category: "Native-like" }
 ];
 
 // Language to country mapping for placeholder text
@@ -305,23 +305,19 @@ async function handleFormSubmit(e) {
     
     const selectedButtons = document.querySelectorAll('.skill-button.selected');
     const selectedLevels = Array.from(selectedButtons).map(btn => parseInt(btn.dataset.level));
-    // Calculate average difficulty
-    const avgLevel = selectedLevels.length > 0 ? Math.round(selectedLevels.reduce((a, b) => a + b, 0) / selectedLevels.length) : 1;
+    
+    // Calculate average difficulty on 1-100 scale
+    const avgLevel = selectedLevels.length > 0 
+        ? Math.round(selectedLevels.reduce((a, b) => a + b, 0) / selectedLevels.length)
+        : 10; // Default to basic level if nothing selected
     
     // Debug logging for skill level calculation
     console.log('Selected buttons:', selectedButtons.length);
     console.log('Selected levels:', selectedLevels);
     console.log('Calculated avgLevel:', avgLevel);
     console.log('avgLevel type:', typeof avgLevel);
-    console.log('Is avgLevel NaN?', isNaN(avgLevel));
     
-    // Safety check: Ensure avgLevel is within expected range (1-12)
-    const safeAvgLevel = Math.max(1, Math.min(12, avgLevel));
-    if (safeAvgLevel !== avgLevel) {
-        console.warn(`avgLevel ${avgLevel} was clamped to ${safeAvgLevel}`);
-    }
-    
-    // Map slider level to target proficiency (0-100 scale)
+    // Map slider level to target proficiency (1-100 scale)
     const proficiencyMapping = {
         1: 20,  // Basics
         2: 40,  // Getting Comfortable
@@ -335,15 +331,15 @@ async function handleFormSubmit(e) {
     // Safety check for undefined mapping
     if (mappedProficiency === undefined) {
         console.error('Invalid currentLevel:', currentLevel);
-        showError('Invalid learning level selected. Please try again.');
+        showError('Please select your target proficiency level using the slider.');
         return;
     }
     
     const formData = {
-        skillLevel: safeAvgLevel,
+        skillLevel: avgLevel, // This is now on 1-100 scale
         selectedSentences: selectedLevels,
         learningGoal: learningGoal.value, // Descriptive text from slider
-        targetProficiency: mappedProficiency, // Mapped to 0-100 scale
+        targetProficiency: mappedProficiency, // Already on 1-100 scale
         motivationGoal: motivationGoal.value.trim(),
         topicsOfInterest: topicsOfInterest.value.trim()
     };
@@ -356,19 +352,26 @@ async function handleFormSubmit(e) {
     const validateFormData = (formData) => {
         const errors = [];
         
-        // Validate skill level
-        if (typeof formData.skillLevel !== 'number' || isNaN(formData.skillLevel) || formData.skillLevel < 1 || formData.skillLevel > 12) {
-            errors.push('Invalid skill level. Please select at least one sentence.');
+        // Validate skill level (now on 1-100 scale)
+        if (typeof formData.skillLevel !== 'number' || isNaN(formData.skillLevel) || formData.skillLevel < 1 || formData.skillLevel > 100) {
+            errors.push('Please select at least one sentence to assess your current level.');
         }
         
-        // Validate learning goal
+        // Validate slider level (1-5 UI scale)
+        if (!currentLevel || currentLevel < 1 || currentLevel > 5) {
+            errors.push('Please select your target proficiency level using the slider.');
+            return errors; // Return early as this is critical
+        }
+        
+        // Validate learning goal text
         if (!formData.learningGoal || formData.learningGoal.trim().length === 0) {
             errors.push('Please select a learning goal using the slider.');
         }
         
-        // Validate target proficiency
-        if (!formData.targetProficiency || formData.targetProficiency < 20 || formData.targetProficiency > 100) {
-            errors.push('Invalid learning level. Please select a level between 1 and 5.');
+        // Validate target proficiency (1-100 scale from slider mapping)
+        const mappedProf = proficiencyMapping[currentLevel];
+        if (!mappedProf || mappedProf < 20 || mappedProf > 100) {
+            errors.push('Please select your target proficiency level using the slider.');
         }
         
         // Validate motivation goal
@@ -405,17 +408,20 @@ async function handleFormSubmit(e) {
         // Log the data being sent
         const requestData = {
             token: userToken,
-            skill_level: safeAvgLevel,
+            skill_level: avgLevel, // Use avgLevel directly
             learning_goal: formData.learningGoal,
-            target_proficiency: formData.targetProficiency,
+            target_proficiency: mappedProficiency,  // Use mappedProficiency directly
             motivation_goal: formData.motivationGoal,
             topics_of_interest: formData.topicsOfInterest
         };
+        
+        // Debug logging
         console.log('Sending onboarding data:', requestData);
-        console.log('target_proficiency value:', formData.targetProficiency);
-        console.log('target_proficiency type:', typeof formData.targetProficiency);
-        console.log('skill_level value:', formData.skillLevel);
-        console.log('skill_level type:', typeof formData.skillLevel);
+        console.log('target_proficiency value:', mappedProficiency);
+        console.log('target_proficiency type:', typeof mappedProficiency);
+        console.log('skill_level value:', avgLevel);
+        console.log('skill_level type:', typeof avgLevel);
+        console.log('current slider level:', currentLevel);
         
         // Submit to backend
         const response = await fetch('/api/complete-onboarding', {

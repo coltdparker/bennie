@@ -169,9 +169,9 @@ async def verify_token(token: str):
 
 class OnboardingData(BaseModel):
     token: str
-    skill_level: int = Field(..., ge=1, le=12)  # Must be between 1 and 12 (not 10)
+    skill_level: int = Field(..., ge=1, le=100)  # Current skill level (1-100)
     learning_goal: str = Field(..., min_length=1, max_length=1000)  # Descriptive text from slider
-    target_proficiency: int = Field(..., ge=20, le=100)  # Numeric level 20-100 from slider mapping
+    target_proficiency: int = Field(..., ge=20, le=100)  # Target level (20,40,60,80,100)
     motivation_goal: str = Field(..., min_length=1, max_length=1000)
     topics_of_interest: str = Field(..., min_length=1, max_length=1000)
 
