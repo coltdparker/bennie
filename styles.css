@@ -24,7 +24,7 @@
     --shadow-hover: 0 8px 32px rgba(20, 20, 20, 0.12);
 
     /* Spacing */
-    --section-spacing: 3rem;  /* Reduced from 8rem to 3rem */
+    --section-spacing: 1rem;  /* Reduced from 8rem to 3rem */
     --content-width: 1200px;
     --section-padding: 2rem;
 }
