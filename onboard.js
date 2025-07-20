@@ -352,23 +352,47 @@ async function handleFormSubmit(e) {
     console.log('Current slider level:', currentLevel);
     console.log('Mapped target proficiency:', mappedProficiency);
     
-    if (!formData.motivationGoal || !formData.topicsOfInterest || selectedLevels.length === 0) {
-        showError('Please fill in all fields and select at least one sentence!');
+    // Validate form data before submission
+    const validateFormData = (formData) => {
+        const errors = [];
+        
+        // Validate skill level
+        if (typeof formData.skillLevel !== 'number' || isNaN(formData.skillLevel) || formData.skillLevel < 1 || formData.skillLevel > 12) {
+            errors.push('Invalid skill level. Please select at least one sentence.');
+        }
+        
+        // Validate learning goal
+        if (!formData.learningGoal || formData.learningGoal.trim().length === 0) {
+            errors.push('Please select a learning goal using the slider.');
+        }
+        
+        // Validate target proficiency
+        if (!formData.targetProficiency || formData.targetProficiency < 20 || formData.targetProficiency > 100) {
+            errors.push('Invalid learning level. Please select a level between 1 and 5.');
+        }
+        
+        // Validate motivation goal
+        if (!formData.motivationGoal || formData.motivationGoal.trim().length === 0) {
+            errors.push('Please tell us what motivates you to learn.');
+        } else if (formData.motivationGoal.length > 600) {
+            errors.push('Motivation text is too long. Please keep it under 600 characters.');
+        }
+        
+        // Validate topics of interest
+        if (!formData.topicsOfInterest || formData.topicsOfInterest.trim().length === 0) {
+            errors.push('Please enter at least one topic of interest.');
+        }
+        
+        return errors;
+    };
+
+    // Add validation before sending data
+    const errors = validateFormData(formData);
+    if (errors.length > 0) {
+        showError(errors.join('\n'));
         return;
     }
-    
-    // Additional validation to ensure learning goal is set
-    if (!formData.learningGoal || formData.learningGoal.trim().length === 0) {
-        showError('Please select a learning goal using the slider above!');
-        return;
-    }
-    
-    // Validate target proficiency mapping
-    if (!formData.targetProficiency || formData.targetProficiency < 20 || formData.targetProficiency > 100) {
-        showError('Invalid learning level selected. Please try again.');
-        return;
-    }
-    
+
     submitButton.disabled = true;
     submitButton.innerHTML = `
         <span>Updating your profile...</span>
@@ -408,23 +432,19 @@ async function handleFormSubmit(e) {
             const errorData = await response.json();
             console.error('Error response:', errorData);
             
-            // Simplified error message extraction
             let errorMessage = 'Failed to complete onboarding';
             
-            if (errorData.detail) {
-                // FastAPI validation errors often come as errorData.detail
+            if (errorData.errors && Array.isArray(errorData.errors)) {
+                // Handle our new validation error format
+                errorMessage = errorData.errors.join('\n');
+            } else if (errorData.detail) {
                 if (Array.isArray(errorData.detail)) {
-                    // Handle validation error array format
-                    errorMessage = errorData.detail.map(err => err.msg || err.message || JSON.stringify(err)).join(', ');
+                    errorMessage = errorData.detail.map(err => err.msg || err.message || JSON.stringify(err)).join('\n');
                 } else if (typeof errorData.detail === 'string') {
                     errorMessage = errorData.detail;
                 } else {
                     errorMessage = JSON.stringify(errorData.detail);
                 }
-            } else if (errorData.message) {
-                errorMessage = errorData.message;
-            } else {
-                errorMessage = `HTTP ${response.status}: ${JSON.stringify(errorData)}`;
             }
             
             console.log('Final error message:', errorMessage);
@@ -452,14 +472,24 @@ function showError(message) {
     const errorDiv = document.createElement('div');
     errorDiv.className = 'error-message';
     errorDiv.style.cssText = `
-        color: #dc2626; background: #fef2f2; border: 1px solid #fecaca;
-        padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 20px;
-        font-size: 0.9rem; text-align: center; font-weight: 500;
+        color: #dc2626; 
+        background: #fef2f2; 
+        border: 1px solid #fecaca;
+        padding: 0.75rem 1rem; 
+        border-radius: 8px; 
+        margin-bottom: 20px;
+        font-size: 0.9rem; 
+        text-align: left;
+        font-weight: 500;
+        white-space: pre-line;
     `;
     errorDiv.textContent = message;
     onboardForm.insertBefore(errorDiv, onboardForm.firstChild);
     
-    setTimeout(() => errorDiv.remove(), 5000);
+    // Scroll error into view
+    errorDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    
+    setTimeout(() => errorDiv.remove(), 8000); // Show for 8 seconds
 }
 
 function showSuccess() {

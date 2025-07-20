@@ -7,9 +7,9 @@ This file serves the frontend and provides API endpoints.
 import os
 import logging
 import secrets
-from fastapi import FastAPI, HTTPException, BackgroundTasks, Request, Header, Query
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Request, Header, Query, status
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import uvicorn
@@ -24,6 +24,7 @@ from Backend.openai_connectivity_test import test_openai
 
 import base64
 import httpx
+from fastapi.exceptions import RequestValidationError
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -76,6 +77,32 @@ app.add_middleware(
 
 # Mount static files
 app.mount("/static", StaticFiles(directory="."), name="static")
+
+# Add validation error handler
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """
+    Handle validation errors from Pydantic models and return formatted error response
+    """
+    logger.error(f"Validation error during {request.method} {request.url.path}")
+    logger.error(f"Error details: {exc.errors()}")
+    
+    # Extract error details in a cleaner format
+    error_messages = []
+    for error in exc.errors():
+        # Get the field name from the error location
+        field = error.get("loc", ["unknown"])[-1]
+        message = error.get("msg", "Unknown validation error")
+        error_messages.append(f"{field}: {message}")
+    
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={
+            "detail": "Validation error",
+            "errors": error_messages,
+            "status_code": 422
+        }
+    )
 
 @app.get("/")
 async def read_root():
