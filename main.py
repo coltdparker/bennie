@@ -142,7 +142,7 @@ class OnboardingData(BaseModel):
     token: str
     skill_level: int = Field(..., ge=1, le=10)  # Must be between 1 and 10
     learning_goal: str = Field(..., min_length=1, max_length=1000)  # Descriptive text from slider
-    target_proficiency: int = Field(..., ge=1, le=5)  # Numeric level 1-5 from slider
+    target_proficiency: int = Field(..., ge=20, le=100)  # Numeric level 20-100 from slider mapping
     motivation_goal: str = Field(..., min_length=1, max_length=1000)
     topics_of_interest: str = Field(..., min_length=1, max_length=1000)
 

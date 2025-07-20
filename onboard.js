@@ -315,14 +315,27 @@ async function handleFormSubmit(e) {
     console.log('avgLevel type:', typeof avgLevel);
     console.log('Is avgLevel NaN?', isNaN(avgLevel));
     
+    // Map slider level to target proficiency (0-100 scale)
+    const proficiencyMapping = {
+        1: 20,  // Basics
+        2: 40,  // Getting Comfortable
+        3: 60,  // Conversational
+        4: 80,  // Advanced
+        5: 100  // Fluent
+    };
+    
     const formData = {
         skillLevel: avgLevel,
         selectedSentences: selectedLevels,
         learningGoal: learningGoal.value, // Descriptive text from slider
-        targetProficiency: currentLevel, // Numeric level 1-5 from slider
+        targetProficiency: proficiencyMapping[currentLevel], // Mapped to 0-100 scale
         motivationGoal: motivationGoal.value.trim(),
         topicsOfInterest: topicsOfInterest.value.trim()
     };
+    
+    // Debug logging for proficiency mapping
+    console.log('Current slider level:', currentLevel);
+    console.log('Mapped target proficiency:', proficiencyMapping[currentLevel]);
     
     if (!formData.motivationGoal || !formData.topicsOfInterest || selectedLevels.length === 0) {
         showError('Please fill in all fields and select at least one sentence!');
