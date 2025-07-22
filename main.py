@@ -444,4 +444,14 @@ async def sendgrid_inbound(request: Request, secret: Optional[str] = Query(None)
         return {"success": False, "error": str(e)}
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True) 
+    port = int(os.getenv("PORT", 8000))
+    logger.info(f"Starting server on port {port}")
+    
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",  # Bind to all interfaces
+        port=port,
+        proxy_headers=True,  # Enable proxy headers
+        forwarded_allow_ips="*",  # Trust forwarded headers
+        log_level="info"
+    ) 
