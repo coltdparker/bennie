@@ -3,148 +3,96 @@ from dotenv import load_dotenv
 import sendgrid
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
+from supabase import create_client
 
 load_dotenv()
 
-def get_language_greeting(user_language: str) -> str:
+def get_language_name(language_code: str) -> str:
     """
-    Returns a fun greeting in the user's target language.
+    Convert language code to proper name.
     
     Args:
-        user_language (str): The language code (spanish, french, chinese, japanese, german, italian)
+        language_code (str): The language code (spanish, french, mandarin, japanese, german, italian)
     
     Returns:
-        str: A greeting in the target language
-    """
-    language_greetings = {
-        'spanish': '¡Que tengas un buen camino!',
-        'french': 'Bonne route !',
-        'chinese': '一路顺风！',
-        'japanese': '道中お気をつけて！',
-        'german': 'Gute Reise!',
-        'italian': 'Buon viaggio!'
-    }
-    
-    language_clean = user_language.lower().strip()
-    return language_greetings.get(language_clean, f'Hello! How are you? (Learning {user_language.title()})')
-
-def get_language_name(user_language: str) -> str:
-    """
-    Returns the proper name of the language.
+        str: The proper name of the language
     """
     language_names = {
         'spanish': 'Spanish',
         'french': 'French',
-        'chinese': 'Mandarin Chinese',
+        'mandarin': 'Mandarin Chinese',
+        'chinese': 'Mandarin Chinese',  # For backward compatibility
         'japanese': 'Japanese',
         'german': 'German',
         'italian': 'Italian'
     }
-    
-    language_clean = user_language.lower().strip()
-    return language_names.get(language_clean, user_language.title())
+    return language_names.get(language_code.lower().strip(), language_code.title())
 
-def create_exit_email_html(user_name: str, user_language: str) -> str:
+def get_language_greeting(language_code: str) -> str:
     """
-    Creates the HTML content for the exit email with custom styling.
-    """
-    greeting = get_language_greeting(user_language)
-    language_name = get_language_name(user_language)
+    Get a farewell greeting in the target language.
     
-    html_content = f"""
-    <!DOCTYPE html>
+    Args:
+        language_code (str): The language code
+    
+    Returns:
+        str: A farewell greeting in the target language
+    """
+    greetings = {
+        'spanish': '¡Hasta luego y gracias por todo!',
+        'french': 'Au revoir et merci pour tout !',
+        'mandarin': '再见，谢谢你的一切！',
+        'chinese': '再见，谢谢你的一切！',  # For backward compatibility
+        'japanese': 'さようなら、すべてに感謝します！',
+        'german': 'Auf Wiedersehen und danke für alles!',
+        'italian': 'Arrivederci e grazie di tutto!'
+    }
+    return greetings.get(language_code.lower().strip(), 'Goodbye and thank you for everything!')
+
+def create_exit_email_html(user_name: str, language: str) -> str:
+    """Create HTML content for exit email."""
+    return f"""
     <html>
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Goodbye from Bennie</title>
-    </head>
-    <body style="margin: 0; padding: 0; font-family: 'Inter', Arial, sans-serif; background-color: #f8f8f8; color: #1a1a1a; line-height: 1.6;">
-        <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 40px 20px;">
-            <!-- Header -->
-            <div style="text-align: center; margin-bottom: 40px;">
-                <h1 style="font-family: 'Playfair Display', serif; font-size: 32px; font-weight: 600; color: #FA7561; margin: 0 0 10px 0;">
-                    Bennie
-                </h1>
-                <div style="width: 60px; height: 3px; background-color: #FA7561; margin: 0 auto;"></div>
-            </div>
-            
-            <!-- Greeting -->
-            <div style="margin-bottom: 30px;">
-                <h2 style="font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 500; color: #1a1a1a; margin: 0 0 15px 0;">
-                    {greeting}
-                </h2>
-                <p style="font-size: 16px; color: #4a4a4a; margin: 0;">
-                    Hi {user_name}! I wanted to reach out one more time to say goodbye and thank you for being part of our {language_name} learning community.
-                </p>
-            </div>
-            
-            <!-- Thank you section -->
-            <div style="background-color: #E9E2DF; padding: 25px; border-radius: 12px; margin-bottom: 30px;">
-                <h3 style="font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 500; color: #1a1a1a; margin: 0 0 15px 0;">
-                    Thank You for Learning With Me
-                </h3>
-                <p style="font-size: 16px; color: #4a4a4a; margin: 0 0 15px 0;">
-                    It's been such a pleasure helping you on your {language_name} journey! Every conversation we've had has been special, and I've loved watching your progress and growth.
-                </p>
-                <p style="font-size: 16px; color: #4a4a4a; margin: 0;">
-                    Remember, language learning is a marathon, not a sprint. The foundation you've built with our conversations will stay with you forever!
-                </p>
-            </div>
-            
-            <!-- Encouragement to continue -->
-            <div style="margin-bottom: 30px;">
-                <p style="font-size: 16px; color: #4a4a4a; margin: 0 0 15px 0;">
-                    I hope our time together has inspired you to keep exploring {language_name} in your own way. Whether it's through movies, music, books, or conversations with native speakers, every little bit of practice counts.
-                </p>
-                <p style="font-size: 16px; color: #4a4a4a; margin: 0 0 15px 0;">
-                    Don't forget the vocabulary we've covered together - those words are now part of your {language_name} toolkit! Keep using them whenever you can.
-                </p>
-                <p style="font-size: 16px; color: #4a4a4a; margin: 0;">
-                    And remember, my friends ChatGPT, Gemini, and Claude are always there to help you with translations, grammar questions, or just to chat in {language_name} when you need some practice.
-                </p>
-            </div>
-            
-            <!-- Come back anytime -->
-            <div style="background-color: #f8f8f8; padding: 25px; border-radius: 12px; margin-bottom: 30px; border-left: 4px solid #FA7561;">
-                <h3 style="font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 500; color: #1a1a1a; margin: 0 0 15px 0;">
-                    You're Always Welcome Back
-                </h3>
-                <p style="font-size: 16px; color: #4a4a4a; margin: 0 0 15px 0;">
-                    Life gets busy, priorities change, and that's totally okay! If you ever want to pick up where we left off or start fresh with a different language, I'll be here with open arms.
-                </p>
-                <p style="font-size: 16px; color: #4a4a4a; margin: 0;">
-                    Just visit our website anytime and sign up again. I'll remember our conversations and we can continue your language journey together!
-                </p>
-            </div>
-            
-            <!-- Closing -->
-            <div style="text-align: center; margin-top: 40px;">
-                <p style="font-size: 18px; color: #FA7561; margin: 0 0 20px 0; font-weight: 500;">
-                    Keep practicing and never give up on your dreams!
-                </p>
-                <p style="font-size: 16px; color: #4a4a4a; margin: 0;">
-                    Wishing you all the best in your {language_name} adventures! 🌟
-                </p>
-            </div>
-            
-            <!-- Footer -->
-            <div style="margin-top: 40px; padding-top: 30px; border-top: 1px solid #d1d1d1; text-align: center;">
-                <p style="font-size: 14px; color: #6b6b6b; margin: 0;">
-                    With gratitude and warm wishes,<br>
-                    <strong>Bennie</strong><br>
-                    Your AI Language Learning Friend
-                </p>
-                <p style="font-size: 12px; color: #6b6b6b; margin: 15px 0 0 0;">
-                    P.S. You can always reach out to us at hello@itsbennie.com if you have any questions or just want to say hi!
-                </p>
-            </div>
+    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #FA7561;">Goodbye from Bennie</h1>
+            <p style="font-size: 1.2em; color: #141414;">{get_language_greeting(language)}</p>
+        </div>
+
+        <p>Hi {user_name}! I wanted to reach out one more time to say goodbye and thank you for being part of our {get_language_name(language)} learning community.</p>
+
+        <div style="background-color: #E9E2DF; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <h2 style="color: #FA7561; margin-top: 0;">THANK YOU FOR LEARNING WITH ME:</h2>
+            <p>It's been such a pleasure helping you on your {get_language_name(language)} journey! Every conversation we've had has been special, and I've loved watching your progress and growth.</p>
+            <p>Remember, language learning is a marathon, not a sprint. The foundation you've built with our conversations will stay with you forever!</p>
+        </div>
+
+        <p>I hope our time together has inspired you to keep exploring {get_language_name(language)} in your own way. Whether it's through movies, music, books, or conversations with native speakers, every little bit of practice counts.</p>
+
+        <p>Don't forget the vocabulary we've covered together - those words are now part of your {get_language_name(language)} toolkit! Keep using them whenever you can.</p>
+
+        <p>And remember, my friends ChatGPT, Gemini, and Claude are always there to help you with translations, grammar questions, or just to chat in {get_language_name(language)}</p>
+
+        <div style="background-color: #DAB785; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <h2 style="color: #141414; margin-top: 0;">YOU'RE ALWAYS WELCOME BACK:</h2>
+            <p>Life gets busy, priorities change, and that's totally okay! If you ever want to pick up where we left off or start fresh with a different language, I'll be here with open arms.</p>
+            <p>Just visit our website anytime and sign up again. I'll remember our conversations and we can continue your language journey together!</p>
+        </div>
+
+        <p>Keep practicing and never give up on your dreams! Wishing you all the best in your {get_language_name(language)} adventures!</p>
+
+        <div style="margin-top: 30px;">
+            <p>With gratitude and warm wishes,<br>
+            Bennie<br>
+            <em>Your AI Language Learning Friend</em></p>
+        </div>
+
+        <div style="margin-top: 30px; font-size: 0.9em; color: #666;">
+            <p>P.S. You can always reach out to us at hello@itsbennie.com if you have any questions or just want to say hi!</p>
         </div>
     </body>
     </html>
     """
-    
-    return html_content
 
 def send_exit_email(user_name: str, user_email: str, user_language: str):
     """
@@ -185,7 +133,7 @@ I hope our time together has inspired you to keep exploring {get_language_name(u
 
 Don't forget the vocabulary we've covered together - those words are now part of your {get_language_name(user_language)} toolkit! Keep using them whenever you can.
 
-And remember, my friends ChatGPT, Gemini, and Claude are always there to help you with translations, grammar questions, or just to chat in {get_language_name(user_language)} when you need some practice.
+And remember, my friends ChatGPT, Gemini, and Claude are always there to help you with translations, grammar questions, or just to chat in {get_language_name(user_language)}
 
 YOU'RE ALWAYS WELCOME BACK:
 Life gets busy, priorities change, and that's totally okay! If you ever want to pick up where we left off or start fresh with a different language, I'll be here with open arms.
@@ -217,6 +165,30 @@ P.S. You can always reach out to us at hello@itsbennie.com if you have any quest
         
         if response.status_code == 202:
             print(f"✓ Exit email sent to {user_name} successfully!")
+            
+            # Mark user as inactive in database
+            try:
+                # Get auth user first
+                SUPABASE_URL = os.getenv("SUPABASE_URL")
+                SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+                if not SUPABASE_URL or not SUPABASE_KEY:
+                    print("Missing SUPABASE_URL or SUPABASE_KEY in environment.")
+                    return True  # Still return True as email was sent
+                
+                supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+                
+                # Get auth user
+                auth_user = supabase.auth.admin.get_user_by_email(user_email)
+                if auth_user:
+                    # Update user profile
+                    supabase.table("users").update({
+                        "is_active": False,
+                        "updated_at": "now()"
+                    }).eq("auth_user_id", auth_user.id).execute()
+                    print(f"✓ User {user_name} marked as inactive")
+            except Exception as e:
+                print(f"⚠️ Failed to mark user as inactive: {e}")
+            
             return True
         else:
             print(f"⚠ Unexpected status code: {response.status_code}")

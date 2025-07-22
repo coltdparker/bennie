@@ -85,26 +85,33 @@ def get_user_context(user_email: str) -> Dict:
         Dict: User context including profile and preferences
     """
     try:
-        # Get user profile
-        user_response = supabase.table("users").select(
-            "id, name, target_language, proficiency_level, topics_of_interest, learning_goal"
-        ).eq("email", user_email).execute()
+        # Get auth user first
+        auth_user = supabase.auth.admin.get_user_by_email(user_email)
         
-        if not user_response.data:
+        if not auth_user:
             logger.error(f"User not found: {user_email}")
             raise ValueError(f"User not found: {user_email}")
+        
+        # Get user profile
+        user_response = supabase.table("users").select(
+            "auth_user_id, name, target_language, proficiency_level, topics_of_interest, learning_goal"
+        ).eq("auth_user_id", auth_user.id).execute()
+        
+        if not user_response.data:
+            logger.error(f"User profile not found for auth_user_id: {auth_user.id}")
+            raise ValueError(f"User profile not found: {user_email}")
         
         user = user_response.data[0]
         
         # Get recent email history (last 20 messages)
         history_response = supabase.table("email_history").select(
             "content, is_from_bennie, created_at"
-        ).eq("user_id", user["id"]).order("created_at", desc=True).limit(20).execute()
+        ).eq("auth_user_id", user["auth_user_id"]).order("created_at", desc=True).limit(20).execute()
         
         email_history = history_response.data if history_response.data else []
         
         return {
-            "user_id": user["id"],
+            "auth_user_id": user["auth_user_id"],
             "name": user["name"],
             "target_language": user["target_language"],
             "proficiency_level": user["proficiency_level"] or 1,
@@ -517,7 +524,7 @@ def send_language_learning_email(user_email: str):
             # Save email to history
             try:
                 supabase.table("email_history").insert({
-                    "user_id": user_context["user_id"],
+                    "auth_user_id": user_context["auth_user_id"],
                     "content": bennies_response,
                     "is_from_bennie": True,
                     "difficulty_level": user_context["proficiency_level"]

@@ -1,6 +1,6 @@
 # Bennie - AI Language Learning Friend
 
-A beautiful, modern landing page for Bennie, an AI-powered language learning service that sends personalized emails in the language you're learning. Features enhanced readability, accessibility, and a refined user experience designed to convert visitors into customers.
+A beautiful, modern web application for Bennie, an AI-powered language learning service that sends personalized emails in the language you're learning. Features enhanced readability, accessibility, and a refined user experience designed to help users learn languages through natural immersion.
 
 ## 🎨 Design Features
 
@@ -28,7 +28,16 @@ A beautiful, modern landing page for Bennie, an AI-powered language learning ser
    - 🇯🇵 Japanese
    - 🇩🇪 German
    - 🇮🇹 Italian
-4. **Confirmation**: Success page with user details
+4. **Onboarding Process**:
+   - Current skill assessment
+   - Learning goal selection (5 proficiency levels)
+   - Motivation capture
+   - Topics of interest selection
+5. **Email Interaction**:
+   - Regular language learning emails
+   - Personalized content based on level
+   - Progress tracking
+   - Weekly evaluations
 
 ### Technical Features
 - **Enhanced Form Validation**: Email format validation and required field checking with improved error messaging
@@ -37,42 +46,79 @@ A beautiful, modern landing page for Bennie, an AI-powered language learning ser
 - **Mobile-First**: Responsive design that works on all devices
 - **Modern Fonts**: Inter for body text, Playfair Display for headings
 - **Visual Hierarchy**: Clear typography and spacing for optimal readability
+- **Backend Integration**: FastAPI server with Supabase database
+- **Email System**: SendGrid integration for automated emails
+- **AI Integration**: OpenAI GPT-4 for personalized content generation
 
 ## 📁 File Structure
 
 ```
-├── index.html          # Main HTML structure
-├── styles.css          # All styling, animations, and accessibility features
-├── script.js           # Interactive functionality and form handling
-└── README.md           # Project documentation
+├── Backend/                # Backend Python modules
+│   ├── bennie_email_sender.py    # Email generation and sending
+│   ├── new_user_email.py         # Welcome email handling
+│   ├── send_weekly_evaluation_email.py  # Evaluation emails
+│   └── ...
+├── database/              # Database configuration
+│   ├── schema.sql        # Supabase schema definition
+│   └── setup.py          # Database setup utilities
+├── index.html            # Main landing page
+├── onboard.html          # Onboarding experience
+├── styles.css            # Global styles
+├── script.js             # Landing page functionality
+├── onboard.js            # Onboarding functionality
+├── main.py               # FastAPI server
+└── README.md             # Project documentation
 ```
 
 ## 🛠️ Setup
 
-1. **Clone or download** the project files
-2. **Open `index.html`** in your web browser
-3. **That's it!** No build process or dependencies required
+1. **Clone the repository**
+2. **Install dependencies**: `pip install -r requirements.txt`
+3. **Set up environment variables**:
+   - Create `.env` file with required credentials
+   - Configure Supabase, SendGrid, and OpenAI keys
+4. **Run the server**: `python main.py`
 
-## 🎯 Usage
+## 🚀 Deployment
 
-The landing page is ready to use as-is. When users complete the form, their data is logged to the console and can be easily integrated with your backend system.
+The application is deployed on Railway:
+1. Changes pushed to the main branch trigger automatic deployment
+2. Railway handles environment variables and service configuration
+3. Cron jobs are managed through Railway's scheduling system
 
-### Data Structure
-When a user submits the form, the following data is collected:
+## 🎯 Data Structure
+
+### User Profile
 ```javascript
 {
   email: "user@example.com",
   name: "John Doe",
-  language: "spanish" // or "french", "mandarin", "japanese", "german", "italian"
+  target_language: "spanish",
+  proficiency_level: 20,  // Current level (1-100)
+  target_proficiency: 60, // Goal level (20,40,60,80,100)
+  topics_of_interest: "travel, cooking, movies",
+  motivation_goal: "I want to travel to Spain...",
+  is_verified: true
+}
+```
+
+### Email History
+```javascript
+{
+  user_id: "uuid",
+  content: "Email content...",
+  is_from_bennie: true,
+  difficulty_level: 40,
+  is_evaluation: false
 }
 ```
 
 ## 🔧 Customization
 
 ### Adding New Languages
-1. Add a new button in `index.html` within the `.language-buttons` div
-2. Update the `languageNames` object in `script.js`
-3. Add the corresponding flag emoji
+1. Add language to `languageToCountry` mapping in `onboard.js`
+2. Update language buttons in `index.html`
+3. Add corresponding email templates and translations
 
 ### Changing Colors
 Modify the CSS custom properties in `styles.css`:
@@ -92,36 +138,6 @@ Modify the CSS custom properties in `styles.css`:
 }
 ```
 
-## 🎨 Recent Improvements
-
-### Readability Enhancements
-- **Improved Contrast**: Better text-to-background contrast ratios
-- **Enhanced Typography**: Clearer visual hierarchy with distinct text colors
-- **Better Form Styling**: White backgrounds with improved borders for better definition
-- **Accessibility**: WCAG-compliant color combinations and focus states
-
-### Visual Improvements
-- **Brand Consistency**: Orange accent line under the main title
-- **Better Interactive States**: Enhanced hover effects and selection states
-- **Refined Color Scheme**: More sophisticated palette with better contrast
-- **Improved Error Messaging**: Better styled error messages with proper contrast
-
-### User Experience
-- **Smoother Animations**: Enhanced transitions and loading states
-- **Better Form Feedback**: Clear visual indicators for form validation
-- **Enhanced Mobile Experience**: Improved responsive design
-- **Language Support**: Added Japanese language option
-
-## 🔗 Backend Integration
-
-The form is currently set up to log user data to the console. To integrate with your business backend:
-
-1. Replace the `setTimeout` in `handleFormSubmit()` with your API call to your CRM or database
-2. Add proper error handling for failed requests
-3. Consider adding loading states and success/error messages
-4. Integrate with your email marketing platform (Mailchimp, ConvertKit, etc.)
-5. Set up analytics tracking for conversion optimization
-
 ## 📱 Browser Support
 
 - Chrome (latest)
@@ -137,7 +153,8 @@ The form is currently set up to log user data to the console. To integrate with 
 
 ### Spacing
 - Consistent 8px grid system
-- Generous whitespace for readability
+- Section spacing through CSS variables
+- Responsive padding and margins
 
 ### Animations
 - Smooth transitions (0.3s ease)

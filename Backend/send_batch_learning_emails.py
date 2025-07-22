@@ -19,9 +19,35 @@ from Backend.bennie_email_sender import send_language_learning_email
 BATCH_SIZE = 100
 
 def get_users_to_email(supabase, offset=0, limit=BATCH_SIZE):
-    # Only active, verified users
-    response = supabase.table("users").select("email").eq("is_active", True).eq("is_verified", True).range(offset, offset+limit-1).execute()
-    return response.data
+    """
+    Get active users from auth.users and public.users for batch emailing.
+    Only returns users who have completed onboarding (have a profile in public.users).
+    """
+    # Get active users from public.users
+    response = supabase.table("users").select(
+        "auth_user_id"
+    ).eq("is_active", True).range(offset, offset+limit-1).execute()
+    
+    if not response.data:
+        return []
+    
+    # Get corresponding auth users
+    auth_user_ids = [user["auth_user_id"] for user in response.data]
+    auth_users = []
+    
+    # Fetch users in batches of 10 to avoid rate limits
+    for i in range(0, len(auth_user_ids), 10):
+        batch_ids = auth_user_ids[i:i+10]
+        for auth_user_id in batch_ids:
+            try:
+                user = supabase.auth.admin.get_user(auth_user_id)
+                if user:
+                    auth_users.append({"email": user.email})
+            except Exception as e:
+                print(f"Error fetching auth user {auth_user_id}: {e}")
+                continue
+    
+    return auth_users
 
 def main():
     load_dotenv()

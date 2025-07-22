@@ -50,65 +50,37 @@ except Exception as e:
     logger.error(f"Failed to initialize Supabase client: {e}")
     raise
 
-def generate_verification_token() -> str:
-    """Generate a secure verification token for onboarding."""
-    return secrets.token_urlsafe(32)
+app = FastAPI()
 
-# Note: Scheduler has been moved to Railway cron jobs for reliability
-# See railway.json for cron job configurations
-
-# Create FastAPI app
-app = FastAPI(
-    title="Bennie - AI Language Learning",
-    description="AI-powered language learning through personalized emails",
-    version="1.0.0"
-)
-
-# Note: Scheduler is now handled by Railway cron jobs
-
-# Add CORS middleware
+# CORS middleware configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://itsbennie.com", "http://localhost:3000", "http://localhost:8000"],  # Add localhost for development
+    allow_origins=["*"],  # In production, replace with specific origins
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Mount static files
-app.mount("/static", StaticFiles(directory="."), name="static")
+# Serve static files
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# Add validation error handler
-@app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    """
-    Handle validation errors from Pydantic models and return formatted error response
-    """
-    logger.error(f"Validation error during {request.method} {request.url.path}")
-    logger.error(f"Error details: {exc.errors()}")
-    
-    # Extract error details in a cleaner format
-    error_messages = []
-    for error in exc.errors():
-        # Get the field name from the error location
-        field = error.get("loc", ["unknown"])[-1]
-        message = error.get("msg", "Unknown validation error")
-        error_messages.append(f"{field}: {message}")
-    
-    # Log the formatted error messages
-    logger.info(f"Formatted error messages: {error_messages}")
-    
-    return JSONResponse(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        content={
-            "detail": error_messages,  # Send the array of formatted messages directly
-            "status_code": 422
-        }
-    )
+# Pydantic models
+class UserCreate(BaseModel):
+    email: EmailStr
+    name: str
+    language: str
+
+class OnboardingData(BaseModel):
+    token: str
+    skill_level: int = Field(ge=1, le=100)
+    learning_goal: str
+    target_proficiency: int = Field(ge=1, le=100)
+    motivation_goal: str
+    topics_of_interest: str
 
 @app.get("/")
 async def read_root():
-    """Serve the main landing page."""
+    """Serve the landing page."""
     return FileResponse("index.html")
 
 @app.get("/onboard")
@@ -133,29 +105,27 @@ async def verify_token(token: str):
     try:
         logger.info(f"Verifying token: {token[:10]}...")
         
-        # Find user by verification token
-        response = supabase.table("users").select("id, email, name, target_language, is_verified").eq("verification_token", token).execute()
+        # Find user by verification token in auth metadata
+        response = supabase.auth.verify_otp(token)
         
-        if hasattr(response, 'status_code') and response.status_code >= 400:
-            logger.error(f"Error verifying token: {response}")
-            raise HTTPException(status_code=500, detail=f"Database error: {response}")
-        
-        if not response.data or len(response.data) == 0:
+        if not response or not response.user:
             logger.warning(f"Invalid token: {token[:10]}...")
             raise HTTPException(status_code=404, detail="Invalid or expired token")
         
-        user = response.data[0]
+        # Get user profile from public.users
+        user_response = supabase.table("users").select("auth_user_id, name, target_language").eq("auth_user_id", response.user.id).execute()
         
-        # Check if user is already verified
-        if user.get("is_verified", False):
-            logger.warning(f"User already verified: {user['email']}")
-            raise HTTPException(status_code=400, detail="User already completed onboarding")
+        if not user_response.data:
+            logger.error(f"User profile not found for auth_user_id: {response.user.id}")
+            raise HTTPException(status_code=404, detail="User profile not found")
+        
+        user = user_response.data[0]
         
         return {
             "success": True,
             "user": {
-                "id": user["id"],
-                "email": user["email"],
+                "id": user["auth_user_id"],
+                "email": response.user.email,
                 "name": user["name"],
                 "target_language": user["target_language"]
             }
@@ -166,14 +136,6 @@ async def verify_token(token: str):
     except Exception as e:
         logger.error(f"Unexpected error in verify_token: {e}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
-
-class OnboardingData(BaseModel):
-    token: str
-    skill_level: int = Field(..., ge=1, le=100)  # Current skill level (1-100)
-    learning_goal: str = Field(..., min_length=1, max_length=1000)  # Descriptive text from slider
-    target_proficiency: int = Field(..., ge=20, le=100)  # Target level (20,40,60,80,100)
-    motivation_goal: str = Field(..., min_length=1, max_length=1000)
-    topics_of_interest: str = Field(..., min_length=1, max_length=1000)
 
 @app.post("/api/complete-onboarding")
 async def complete_onboarding(onboarding_data: OnboardingData):
@@ -196,14 +158,14 @@ async def complete_onboarding(onboarding_data: OnboardingData):
         logger.info(f"Received onboarding data: {log_data}")
         
         # First verify the token and get user
-        verify_response = supabase.table("users").select("id").eq("verification_token", onboarding_data.token).execute()
+        auth_response = supabase.auth.verify_otp(onboarding_data.token)
         
-        if not verify_response.data or len(verify_response.data) == 0:
+        if not auth_response or not auth_response.user:
             logger.warning(f"Invalid token attempted: {onboarding_data.token[:10]}...")
             raise HTTPException(status_code=404, detail="Invalid or expired token")
         
-        user_id = verify_response.data[0]["id"]
-        logger.info(f"Token verified for user_id: {user_id}")
+        auth_user_id = auth_response.user.id
+        logger.info(f"Token verified for auth_user_id: {auth_user_id}")
         
         # Update user with onboarding information
         update_data = {
@@ -212,19 +174,15 @@ async def complete_onboarding(onboarding_data: OnboardingData):
             "target_proficiency": onboarding_data.target_proficiency,
             "motivation_goal": onboarding_data.motivation_goal,
             "topics_of_interest": onboarding_data.topics_of_interest,
-            "is_verified": True,
-            "verification_token": None,  # Clear the token after use
             "updated_at": "now()"
         }
         
-        logger.info(f"Updating user {user_id} with data: {update_data}")
-        update_response = supabase.table("users").update(update_data).eq("id", user_id).execute()
+        logger.info(f"Updating user {auth_user_id} with data: {update_data}")
+        update_response = supabase.table("users").update(update_data).eq("auth_user_id", auth_user_id).execute()
         
-        if hasattr(update_response, 'status_code') and update_response.status_code >= 400:
-            logger.error(f"Database update error for user {user_id}: {update_response}")
-            raise HTTPException(status_code=500, detail=f"Failed to update user: {update_response}")
-        
-        logger.info(f"✓ Onboarding completed successfully for user ID: {user_id}")
+        if not update_response.data:
+            logger.error(f"Failed to update user: {update_response.error}")
+            raise HTTPException(status_code=500, detail="Failed to update user profile")
         
         return {
             "success": True,
@@ -259,20 +217,6 @@ async def health_check():
             "error": str(e)
         }
 
-class UserCreate(BaseModel):
-    email: EmailStr
-    name: str
-    language: str
-
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "email": "user@example.com",
-                "name": "John Doe",
-                "language": "spanish"
-            }
-        }
-
 @app.post("/api/users")
 async def create_user(user_data: UserCreate, background_tasks: BackgroundTasks):
     """
@@ -290,70 +234,62 @@ async def create_user(user_data: UserCreate, background_tasks: BackgroundTasks):
     try:
         logger.info(f"Creating user: {user_data.email}")
         
-        # Check if user already exists
-        logger.info("Checking if user already exists...")
-        existing_user_response = supabase.table("users").select("id").eq("email", user_data.email).execute()
-        logger.info(f"Supabase response for existing user: {existing_user_response}")
+        # Check if user already exists in auth.users
+        try:
+            existing_user = supabase.auth.admin.get_user_by_email(user_data.email)
+            if existing_user:
+                logger.warning(f"User already exists: {user_data.email}")
+                raise HTTPException(status_code=400, detail="User already exists")
+        except Exception as e:
+            if "User not found" not in str(e):
+                raise
         
-        # Check for error using status_code or data
-        if hasattr(existing_user_response, 'status_code') and existing_user_response.status_code >= 400:
-            logger.error(f"Error checking existing user: {existing_user_response}")
-            raise HTTPException(status_code=500, detail=f"Database error: {existing_user_response}")
-        
-        if existing_user_response.data and len(existing_user_response.data) > 0:
-            logger.warning(f"User already exists: {user_data.email}")
-            raise HTTPException(status_code=400, detail="User already exists")
-        
-        # Generate verification token
-        verification_token = generate_verification_token()
-        
-        # Prepare data for insertion
-        insert_data = {
+        # Create user in auth.users with metadata
+        auth_response = supabase.auth.admin.create_user({
             "email": user_data.email.lower().strip(),
-            "name": user_data.name.strip(),
-            "target_language": user_data.language.lower().strip(),
-            "verification_token": verification_token
-        }
+            "email_confirm": True,  # Auto-confirm for now
+            "user_metadata": {
+                "name": user_data.name.strip(),
+                "target_language": user_data.language.lower().strip(),
+                "proficiency_level": 1,  # Default starting level
+                "topics_of_interest": "",  # Will be set during onboarding
+                "learning_goal": None,  # Will be set during onboarding
+                "motivation_goal": None,  # Will be set during onboarding
+                "target_proficiency": 50,  # Default target
+                "email_schedule": {"frequency": "weekly"}
+            }
+        })
         
-        logger.info(f"Inserting user data: {insert_data}")
+        if not auth_response or not auth_response.user:
+            logger.error("Failed to create auth user")
+            raise HTTPException(status_code=500, detail="Failed to create user")
         
-        # Insert new user
-        insert_response = supabase.table("users").insert(insert_data).execute()
-        logger.info(f"Supabase response for insert: {insert_response}")
+        # The trigger will automatically create the user profile in public.users
         
-        if hasattr(insert_response, 'status_code') and insert_response.status_code >= 400:
-            logger.error(f"Supabase insert error: {insert_response}")
-            raise HTTPException(status_code=500, detail=f"Failed to create user: {insert_response}")
+        # Generate and send magic link for onboarding
+        magic_link = supabase.auth.admin.generate_magic_link(user_data.email)
         
-        if not insert_response.data or len(insert_response.data) == 0:
-            logger.error("No data returned from insert operation")
-            raise HTTPException(status_code=500, detail="Failed to create user: No data returned")
-        
-        user_id = insert_response.data[0]["id"]
-        logger.info(f"User created successfully with ID: {user_id}")
-
-        # Send welcome email in the background with the verification token
+        # Send welcome email with magic link
         background_tasks.add_task(
             send_welcome_email,
-            user_data.name.strip(),
-            user_data.email.lower().strip(),
-            user_data.language.lower().strip(),
-            verification_token
+            user_name=user_data.name,
+            user_email=user_data.email,
+            user_language=user_data.language,
+            user_token=magic_link
         )
-
+        
         return {
             "success": True,
-            "user_id": user_id,
-            "message": "User created successfully",
+            "user_id": auth_response.user.id,
+            "message": "User created successfully. Check your email to complete onboarding.",
             "user": {
-                "email": insert_data["email"],
-                "name": insert_data["name"],
-                "target_language": insert_data["target_language"]
+                "email": user_data.email,
+                "name": user_data.name,
+                "target_language": user_data.language
             }
         }
         
     except HTTPException:
-        # Re-raise HTTP exceptions as-is
         raise
     except Exception as e:
         logger.error(f"Unexpected error in create_user: {e}")
@@ -376,20 +312,21 @@ async def get_user(email: str):
     try:
         logger.info(f"Getting user: {email}")
         
-        response = supabase.table("users").select("*").eq("email", email.lower().strip()).execute()
-        logger.info(f"Supabase response for get_user: {response}")
+        # Get auth user first
+        auth_user = supabase.auth.admin.get_user_by_email(email)
         
-        if hasattr(response, 'status_code') and response.status_code >= 400:
-            logger.error(f"Error getting user: {response}")
-            raise HTTPException(status_code=500, detail=f"Database error: {response}")
-        
-        if not response.data or len(response.data) == 0:
+        if not auth_user:
             raise HTTPException(status_code=404, detail="User not found")
+        
+        # Get user profile from public.users
+        response = supabase.table("users").select("*").eq("auth_user_id", auth_user.id).execute()
+        
+        if not response.data:
+            raise HTTPException(status_code=404, detail="User profile not found")
         
         user = response.data[0]
         # Remove sensitive fields
-        user.pop("id", None)
-        user.pop("verification_token", None)
+        user.pop("auth_user_id", None)
         
         return {"success": True, "user": user}
         
@@ -399,24 +336,9 @@ async def get_user(email: str):
         logger.error(f"Unexpected error in get_user: {e}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
-SENDGRID_WEBHOOK_SECRET = os.getenv("SENDGRID_WEBHOOK_SECRET", "changeme")
-
 @app.post("/api/sendgrid-inbound")
 async def sendgrid_inbound(request: Request, secret: Optional[str] = Query(None)):
-    """
-    Endpoint to receive SendGrid Inbound Parse Webhook POSTs.
-    Expects multipart/form-data with at least 'from' and 'text' fields.
-    Secured with a 'secret' query parameter.
-    """
-    logger.info("=== SendGrid Inbound Webhook Received ===")
-    logger.info(f"Secret provided: {secret[:10] + '...' if secret else 'None'}")
-    logger.info(f"Expected secret: {SENDGRID_WEBHOOK_SECRET[:10] + '...' if SENDGRID_WEBHOOK_SECRET else 'None'}")
-    
-    # Basic security check
-    if secret != SENDGRID_WEBHOOK_SECRET:
-        logger.error(f"Unauthorized webhook attempt. Secret mismatch.")
-        return {"success": False, "error": "Unauthorized"}
-
+    """Handle inbound emails from SendGrid."""
     try:
         # Log all form data for debugging
         form = await request.form()
@@ -444,190 +366,48 @@ async def sendgrid_inbound(request: Request, secret: Optional[str] = Query(None)
             
         logger.info(f"Cleaned sender email: {sender_email}")
 
-        # Find user by email
-        logger.info(f"Looking up user with email: {sender_email.lower()}")
-        user_resp = supabase.table("users").select("id, name, target_language, proficiency_level, instant_reply").eq("email", sender_email.lower()).execute()
+        # Get auth user first
+        auth_user = supabase.auth.admin.get_user_by_email(sender_email.lower())
         
-        if hasattr(user_resp, 'status_code') and user_resp.status_code >= 400:
-            logger.error(f"Database error looking up user: {user_resp}")
-            return {"success": False, "error": f"Database error: {user_resp}"}
-        
-        if not user_resp.data or len(user_resp.data) == 0:
+        if not auth_user:
             logger.error(f"User not found for email: {sender_email}")
             return {"success": False, "error": "User not found"}
         
+        # Find user profile
+        user_resp = supabase.table("users").select(
+            "auth_user_id, name, target_language, proficiency_level, instant_reply"
+        ).eq("auth_user_id", auth_user.id).execute()
+        
+        if not user_resp.data:
+            logger.error(f"User profile not found for auth_user_id: {auth_user.id}")
+            return {"success": False, "error": "User profile not found"}
+        
         user = user_resp.data[0]
-        user_id = user["id"]
-        user_name = user["name"]
-        user_language = user["target_language"]
-        user_level = user.get("proficiency_level", 1)
         instant_reply = user.get("instant_reply", False)
-        logger.info(f"Found user: {user_name} (ID: {user_id}), instant_reply={instant_reply}")
-
-        # Insert into email_history
-        logger.info("Inserting reply into email_history table")
-        try:
-            insert_resp = supabase.table("email_history").insert({
-                "user_id": user_id,
-                "content": text_content,
-                "is_from_bennie": False
-            }).execute()
-            logger.info(f"Supabase insert response: {insert_resp}")
-            if hasattr(insert_resp, 'status_code') and insert_resp.status_code >= 400:
-                logger.error(f"Database error inserting email: {insert_resp}")
-                return {"success": False, "error": f"DB error: {insert_resp}"}
-        except Exception as db_exc:
-            logger.error(f"Exception during Supabase insert: {db_exc}")
-            return {"success": False, "error": f"Supabase insert exception: {str(db_exc)}"}
-
-        # DEV AUTO-EVAL: If instant_reply, check for 3+ replies since last eval and trigger eval if needed
-        if instant_reply:
-            try:
-                # Find last evaluation email
-                evals_resp = supabase.table("email_history").select("created_at").eq("user_id", user_id).eq("is_evaluation", True).order("created_at", desc=True).limit(1).execute()
-                last_eval_time = None
-                if evals_resp.data and len(evals_resp.data) > 0:
-                    last_eval_time = evals_resp.data[0]["created_at"]
-                # Count user replies since last eval
-                replies_query = supabase.table("email_history").select("id").eq("user_id", user_id).eq("is_from_bennie", False)
-                if last_eval_time:
-                    replies_query = replies_query.gte("created_at", last_eval_time)
-                replies_resp = replies_query.execute()
-                reply_count = len(replies_resp.data) if replies_resp.data else 0
-                logger.info(f"DEV AUTO-EVAL: User {user_name} ({sender_email}) has {reply_count} replies since last eval.")
-                if reply_count >= 3:
-                    from Backend.send_weekly_evaluation_email import send_weekly_evaluation_email
-                    send_weekly_evaluation_email(sender_email)
-                    logger.info(f"✓ DEV AUTO-EVAL: Evaluation email sent to {sender_email}")
-            except Exception as e:
-                logger.error(f"DEV AUTO-EVAL: Failed to check/send evaluation for {sender_email}: {e}")
-
-        # If instant_reply is enabled, send a language learning email immediately
-        if instant_reply:
-            logger.info(f"User {user_name} has instant_reply enabled. Sending immediate response...")
-            try:
-                # Use the legacy wrapper to support the old signature
-                from Backend.bennie_email_sender import send_language_learning_email_legacy
-                send_language_learning_email_legacy(
-                    user_name=user_name,
-                    user_email=sender_email,
-                    user_language=user_language,
-                    user_level=user_level
-                )
-                logger.info(f"✓ Immediate language learning email sent to {user_name} ({sender_email})")
-            except Exception as e:
-                logger.error(f"Error sending instant reply email: {e}")
-
-        logger.info(f"✓ Successfully saved reply from {user_name} ({sender_email})")
-        return {"success": True, "message": "Reply saved"}
-
-    except Exception as e:
-        logger.error(f"Unexpected error in sendgrid_inbound: {e}")
-        return {"success": False, "error": f"Internal error: {str(e)}"}
-
-# ---
-# Helper endpoint for AI: fetch all email history for a user (by email)
-# This allows the AI agent to see the full conversation history for context and personalization.
-# ---
-@app.get("/api/email-history/{email}")
-async def get_email_history(email: str):
-    """
-    Fetch all email history for a user by their email address.
-    Returns a list of messages (from user and from Bennie) in chronological order.
-    """
-    logger.info(f"Fetching email history for user: {email}")
-    user_resp = supabase.table("users").select("id").eq("email", email.lower().strip()).execute()
-    if not user_resp.data or len(user_resp.data) == 0:
-        logger.error(f"User not found for email: {email}")
-        return {"success": False, "error": "User not found"}
-    user_id = user_resp.data[0]["id"]
-    history_resp = supabase.table("email_history").select("*").eq("user_id", user_id).order("created_at", desc=False).execute()
-    logger.info(f"Fetched {len(history_resp.data) if history_resp.data else 0} messages for user_id {user_id}")
-    return {"success": True, "history": history_resp.data or []}
-
-@app.get("/api/test-webhook")
-async def test_webhook():
-    """
-    Test endpoint to verify webhook URL is accessible.
-    """
-    logger.info("Webhook test endpoint accessed")
-    return {
-        "success": True,
-        "message": "Webhook endpoint is accessible",
-        "timestamp": "2025-01-27T00:00:00Z",
-        "webhook_url": "/api/sendgrid-inbound",
-        "secret_configured": bool(SENDGRID_WEBHOOK_SECRET and SENDGRID_WEBHOOK_SECRET != "changeme")
-    }
-
-@app.get("/test-httpbin")
-def test_httpbin():
-    try:
-        r = httpx.get("https://httpbin.org/get", timeout=5)
-        return {"success": True, "status_code": r.status_code, "json": r.json()}
-    except Exception as e:
-        return {"success": False, "error": str(e)}
-
-@app.post("/api/trigger-dev-auto-eval")
-async def trigger_dev_auto_eval():
-    """Trigger dev auto-evaluation for instant_reply users."""
-    try:
-        logger.info("Running dev auto-eval check...")
-        users_resp = supabase.table("users").select("id,email").eq("instant_reply", True).execute()
         
-        if not users_resp.data:
-            logger.info("No instant_reply users found for dev auto-eval.")
-            return {"success": True, "message": "No instant_reply users found"}
-        
-        eval_count = 0
-        for user in users_resp.data:
-            user_id = user["id"]
-            email = user["email"]
-            
-            # Find last evaluation email
-            evals_resp = supabase.table("email_history").select("created_at").eq("user_id", user_id).eq("is_evaluation", True).order("created_at", desc=True).limit(1).execute()
-            last_eval_time = None
-            if evals_resp.data and len(evals_resp.data) > 0:
-                last_eval_time = evals_resp.data[0]["created_at"]
-            
-            # Count user replies since last eval
-            replies_query = supabase.table("email_history").select("id").eq("user_id", user_id).eq("is_from_bennie", False)
-            if last_eval_time:
-                replies_query = replies_query.gte("created_at", last_eval_time)
-            replies_resp = replies_query.execute()
-            reply_count = len(replies_resp.data) if replies_resp.data else 0
-            
-            if reply_count >= 3:
-                try:
-                    from Backend.send_weekly_evaluation_email import send_weekly_evaluation_email
-                    send_weekly_evaluation_email(email)
-                    eval_count += 1
-                    logger.info(f"✓ Dev auto-eval sent to {email} (replies since last eval: {reply_count})")
-                except Exception as e:
-                    logger.error(f"Dev auto-eval failed for {email}: {e}")
-        
-        return {
-            "success": True, 
-            "message": f"Dev auto-eval completed. {eval_count} evaluations sent.",
-            "evaluations_sent": eval_count
+        # Save the email in history
+        email_data = {
+            "auth_user_id": user["auth_user_id"],
+            "content": text_content,
+            "is_from_bennie": False,
+            "difficulty_level": user.get("proficiency_level", 1)
         }
         
+        email_resp = supabase.table("email_history").insert(email_data).execute()
+        
+        if not email_resp.data:
+            logger.error("Failed to save email to history")
+            return {"success": False, "error": "Failed to save email"}
+        
+        # If instant reply is enabled, send a response
+        if instant_reply:
+            background_tasks.add_task(send_language_learning_email, sender_email)
+        
+        return {"success": True}
+        
     except Exception as e:
-        logger.error(f"Dev auto-eval job failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Dev auto-eval failed: {str(e)}")
-
-# Register the /test-openai endpoint
-app.add_api_route("/test-openai", test_openai, methods=["GET"])
+        logger.error(f"Error processing inbound email: {e}")
+        return {"success": False, "error": str(e)}
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 8000))
-    debug = os.getenv("DEBUG", "False").lower() == "true"
-    
-    logger.info(f"Starting Bennie server on port {port} (debug={debug})")
-    
-    uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=port,
-        reload=debug,
-        log_level="info"
-    ) 
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True) 
