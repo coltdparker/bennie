@@ -61,8 +61,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Serve static files
-app.mount("/static", StaticFiles(directory="static"), name="static")
+# Update static files configuration
+app.mount("/static", StaticFiles(directory="frontend/public/static"), name="static")
 
 # Pydantic models
 class UserCreate(BaseModel):
@@ -81,12 +81,12 @@ class OnboardingData(BaseModel):
 @app.get("/")
 async def read_root():
     """Serve the landing page."""
-    return FileResponse("index.html")
+    return FileResponse("frontend/src/index.html")
 
 @app.get("/onboard")
 async def read_onboard():
     """Serve the onboarding page."""
-    return FileResponse("onboard.html")
+    return FileResponse("frontend/src/onboard.html")
 
 @app.get("/api/verify-token/{token}")
 async def verify_token(token: str):
