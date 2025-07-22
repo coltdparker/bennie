@@ -126,18 +126,29 @@ async def verify_token(token: str):
     try:
         logger.info(f"Verifying token: {token[:10]}...")
         
-        # Find user by verification token in auth metadata
-        response = supabase.auth.verify_otp(token)
-        
-        if not response or not response.user:
-            logger.warning(f"Invalid token: {token[:10]}...")
+        # Verify the magic link token
+        try:
+            verify_response = supabase.auth.verify_otp({
+                "token_hash": token,
+                "type": "magiclink"
+            })
+            
+            if not verify_response or not verify_response.user:
+                logger.warning(f"Invalid token: {token[:10]}...")
+                raise HTTPException(status_code=404, detail="Invalid or expired token")
+            
+            user_id = verify_response.user.id
+            user_email = verify_response.user.email
+            
+        except Exception as e:
+            logger.error(f"Token verification failed: {e}")
             raise HTTPException(status_code=404, detail="Invalid or expired token")
         
         # Get user profile from public.users
-        user_response = supabase.table("users").select("auth_user_id, name, target_language").eq("auth_user_id", response.user.id).execute()
+        user_response = supabase.table("users").select("auth_user_id, name, target_language").eq("auth_user_id", user_id).execute()
         
         if not user_response.data:
-            logger.error(f"User profile not found for auth_user_id: {response.user.id}")
+            logger.error(f"User profile not found for auth_user_id: {user_id}")
             raise HTTPException(status_code=404, detail="User profile not found")
         
         user = user_response.data[0]
@@ -146,7 +157,7 @@ async def verify_token(token: str):
             "success": True,
             "user": {
                 "id": user["auth_user_id"],
-                "email": response.user.email,
+                "email": user_email,
                 "name": user["name"],
                 "target_language": user["target_language"]
             }
@@ -270,7 +281,12 @@ async def create_user(user_data: UserCreate, background_tasks: BackgroundTasks):
         
         # Check if user already exists in auth.users
         try:
-            existing_user = supabase.auth.admin.get_user_by_email(user_data.email)
+            # Use list_users and filter instead of get_user_by_email
+            existing_users = supabase.auth.admin.list_users()
+            existing_user = next(
+                (user for user in existing_users if user.email == user_data.email.lower()),
+                None
+            )
             if existing_user:
                 logger.warning(f"User already exists: {user_data.email}")
                 raise HTTPException(status_code=400, detail="User already exists")
@@ -279,8 +295,9 @@ async def create_user(user_data: UserCreate, background_tasks: BackgroundTasks):
                 raise
         
         # Create user in auth.users with metadata
-        auth_response = supabase.auth.admin.create_user({
+        signup_data = {
             "email": user_data.email.lower().strip(),
+            "password": secrets.token_urlsafe(30),  # Generate a secure random password
             "email_confirm": True,  # Auto-confirm for now
             "user_metadata": {
                 "name": user_data.name.strip(),
@@ -292,7 +309,9 @@ async def create_user(user_data: UserCreate, background_tasks: BackgroundTasks):
                 "target_proficiency": 50,  # Default target
                 "email_schedule": {"frequency": "weekly"}
             }
-        })
+        }
+        
+        auth_response = supabase.auth.admin.create_user(signup_data)
         
         if not auth_response or not auth_response.user:
             logger.error("Failed to create auth user")
@@ -300,8 +319,16 @@ async def create_user(user_data: UserCreate, background_tasks: BackgroundTasks):
         
         # The trigger will automatically create the user profile in public.users
         
-        # Generate and send magic link for onboarding
-        magic_link = supabase.auth.admin.generate_magic_link(user_data.email)
+        # Generate magic link for onboarding
+        magic_link_response = supabase.auth.admin.generate_link(
+            type="magiclink",
+            email=user_data.email,
+            redirect_to="https://itsbennie.com/onboard"  # Adjust this URL as needed
+        )
+        
+        if not magic_link_response:
+            logger.error("Failed to generate magic link")
+            raise HTTPException(status_code=500, detail="Failed to generate verification link")
         
         # Send welcome email with magic link
         background_tasks.add_task(
@@ -309,7 +336,7 @@ async def create_user(user_data: UserCreate, background_tasks: BackgroundTasks):
             user_name=user_data.name,
             user_email=user_data.email,
             user_language=user_data.language,
-            user_token=magic_link
+            user_token=magic_link_response.properties.action_link
         )
         
         return {
@@ -346,8 +373,12 @@ async def get_user(email: str):
     try:
         logger.info(f"Getting user: {email}")
         
-        # Get auth user first
-        auth_user = supabase.auth.admin.get_user_by_email(email)
+        # Get auth user
+        users = supabase.auth.admin.list_users()
+        auth_user = next(
+            (user for user in users if user.email == email.lower()),
+            None
+        )
         
         if not auth_user:
             raise HTTPException(status_code=404, detail="User not found")
