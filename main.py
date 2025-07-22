@@ -25,32 +25,51 @@ from Backend.openai_connectivity_test import test_openai
 import base64
 import httpx
 from fastapi.exceptions import RequestValidationError
+import datetime
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+# Configure logging with more detail
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
 load_dotenv()
+
+# Log environment setup
+logger.info("Starting Bennie application...")
+logger.info(f"Python version: {sys.version}")
+logger.info(f"Working directory: {os.getcwd()}")
+logger.info("Checking required environment variables...")
 
 SUPABASE_URL: str = os.getenv("SUPABASE_URL")
 SUPABASE_KEY: str = os.getenv("SUPABASE_KEY")
 
 # Debug: Print environment variables (mask key)
-logger.info(f"SUPABASE_URL: {SUPABASE_URL}")
-logger.info(f"SUPABASE_KEY: {SUPABASE_KEY[:6] + '...' if SUPABASE_KEY else None}")
+logger.info(f"SUPABASE_URL configured: {bool(SUPABASE_URL)}")
+logger.info(f"SUPABASE_KEY configured: {bool(SUPABASE_KEY)}")
 
 if not SUPABASE_URL or not SUPABASE_KEY:
     logger.error("Missing required environment variables: SUPABASE_URL or SUPABASE_KEY")
     raise ValueError("Missing required environment variables")
 
 try:
+    logger.info("Initializing Supabase client...")
     supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
     logger.info("Supabase client initialized successfully")
+    
+    # Test connection immediately
+    test_response = supabase.table("users").select("count", count="exact").limit(1).execute()
+    logger.info("Successfully tested Supabase connection")
 except Exception as e:
-    logger.error(f"Failed to initialize Supabase client: {e}")
+    logger.error(f"Failed to initialize or test Supabase client: {e}")
     raise
 
+# Create FastAPI app
 app = FastAPI()
+
+# Log middleware setup
+logger.info("Configuring CORS middleware...")
 
 # CORS middleware configuration
 app.add_middleware(
@@ -60,9 +79,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+logger.info("CORS middleware configured")
 
 # Update static files configuration
 app.mount("/static", StaticFiles(directory="frontend/public/static"), name="static")
+logger.info("Static files directory mounted")
 
 # Pydantic models
 class UserCreate(BaseModel):
@@ -201,19 +222,32 @@ async def health_check():
     try:
         # Test Supabase connection
         response = supabase.table("users").select("count", count="exact").limit(1).execute()
+        if hasattr(response, 'status_code') and response.status_code >= 400:
+            logger.error(f"Health check failed: Supabase error {response.status_code}")
+            raise Exception(f"Supabase error: {response.status_code}")
+            
         logger.info("Health check: Supabase connection successful")
+        logger.info(f"Response data: {response.data}")
+        
+        # Use current timestamp
+        current_time = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        
         return {
             "status": "healthy", 
             "service": "bennie",
             "database": "connected",
-            "timestamp": "2025-01-27T00:00:00Z"
+            "timestamp": current_time,
+            "database_response": "success"
         }
     except Exception as e:
         logger.error(f"Health check failed: {e}")
+        # Use current timestamp even in error response
+        current_time = datetime.datetime.now(datetime.timezone.utc).isoformat()
         return {
             "status": "unhealthy",
             "service": "bennie", 
             "database": "disconnected",
+            "timestamp": current_time,
             "error": str(e)
         }
 
