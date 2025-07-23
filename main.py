@@ -130,15 +130,19 @@ async def signin(signin_data: SignInRequest):
         email = signin_data.email.lower()
         logger.info(f"Sign-in request for email: {email}")
         
-        # Check if user exists in auth
-        users = supabase.auth.admin.list_users()
-        auth_user = next(
-            (user for user in users if user.email == email),
-            None
-        )
-        
-        if not auth_user:
-            logger.warning(f"User not found: {email}")
+        # Check if user exists in auth using get_user_by_email
+        try:
+            auth_user = supabase.auth.admin.get_user_by_email(email)
+            
+            if not auth_user:
+                logger.warning(f"User not found: {email}")
+                raise HTTPException(
+                    status_code=404,
+                    detail="No account found with this email. Please start from the homepage."
+                )
+                
+        except Exception as e:
+            logger.error(f"Error checking user existence: {e}")
             raise HTTPException(
                 status_code=404,
                 detail="No account found with this email. Please start from the homepage."
