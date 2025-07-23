@@ -17,15 +17,11 @@ from pydantic import BaseModel, EmailStr, Field
 from supabase import create_client, Client
 from typing import Optional
 import sys
+import datetime
 sys.path.append('./Backend')
 from new_user_email import send_welcome_email
 from Backend.bennie_email_sender import send_language_learning_email
 from Backend.openai_connectivity_test import test_openai
-
-import base64
-import httpx
-from fastapi.exceptions import RequestValidationError
-import datetime
 
 # Configure logging with more detail
 logging.basicConfig(
@@ -36,40 +32,39 @@ logger = logging.getLogger(__name__)
 
 load_dotenv()
 
-# Log environment setup
-logger.info("Starting Bennie application...")
-logger.info(f"Python version: {sys.version}")
-logger.info(f"Working directory: {os.getcwd()}")
-logger.info("Checking required environment variables...")
-
+# Environment variables
 SUPABASE_URL: str = os.getenv("SUPABASE_URL")
-SUPABASE_KEY: str = os.getenv("SUPABASE_KEY")
+SUPABASE_KEY: str = os.getenv("SUPABASE_KEY")  # Service role key
 
-# Debug: Print environment variables (mask key)
+# Debug: Print environment variables (mask keys)
 logger.info(f"SUPABASE_URL configured: {bool(SUPABASE_URL)}")
 logger.info(f"SUPABASE_KEY configured: {bool(SUPABASE_KEY)}")
 
-if not SUPABASE_URL or not SUPABASE_KEY:
-    logger.error("Missing required environment variables: SUPABASE_URL or SUPABASE_KEY")
+if not all([SUPABASE_URL, SUPABASE_KEY]):
+    logger.error("Missing required environment variables")
     raise ValueError("Missing required environment variables")
 
+# Initialize Supabase client with service role key
 try:
     logger.info("Initializing Supabase client...")
-    supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+    
+    # Single client with service role key
+    supabase: Client = create_client(
+        SUPABASE_URL,
+        SUPABASE_KEY
+    )
     logger.info("Supabase client initialized successfully")
     
     # Test connection immediately
     test_response = supabase.table("users").select("count", count="exact").limit(1).execute()
     logger.info("Successfully tested Supabase connection")
+    
 except Exception as e:
     logger.error(f"Failed to initialize or test Supabase client: {e}")
     raise
 
 # Create FastAPI app
 app = FastAPI()
-
-# Log middleware setup
-logger.info("Configuring CORS middleware...")
 
 # CORS middleware configuration
 app.add_middleware(
@@ -99,6 +94,9 @@ class OnboardingData(BaseModel):
     motivation_goal: str
     topics_of_interest: str
 
+class SignInRequest(BaseModel):
+    email: EmailStr
+
 @app.get("/")
 async def read_root():
     """Serve the landing page."""
@@ -108,6 +106,77 @@ async def read_root():
 async def read_onboard():
     """Serve the onboarding page."""
     return FileResponse("frontend/src/onboard.html")
+
+@app.get("/signin")
+async def read_signin():
+    """Serve the sign-in page."""
+    return FileResponse("frontend/src/signin.html")
+
+@app.post("/api/auth/signin")
+async def signin(signin_data: SignInRequest):
+    """
+    Generate and send a magic link for user sign-in.
+    
+    Args:
+        signin_data: User's email address
+        
+    Returns:
+        dict: Success response
+        
+    Raises:
+        HTTPException: If user not found or magic link generation fails
+    """
+    try:
+        email = signin_data.email.lower()
+        logger.info(f"Sign-in request for email: {email}")
+        
+        # Check if user exists in auth
+        users = supabase.auth.admin.list_users()
+        auth_user = next(
+            (user for user in users if user.email == email),
+            None
+        )
+        
+        if not auth_user:
+            logger.warning(f"User not found: {email}")
+            raise HTTPException(
+                status_code=404,
+                detail="No account found with this email. Please start from the homepage."
+            )
+        
+        # Generate magic link
+        try:
+            sign_in_token = supabase.auth.admin.generate_link({
+                "email": email,
+                "type": "magiclink",
+                "redirect_to": "https://itsbennie.com/profile"  # Redirect to profile page after verification
+            })
+            
+            if not sign_in_token:
+                raise Exception("Failed to generate magic link")
+                
+            logger.info(f"Magic link generated for {email}")
+            
+            return {
+                "success": True,
+                "message": "Magic link sent successfully"
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to generate magic link: {e}")
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to generate sign-in link. Please try again."
+            )
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error in signin: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="An unexpected error occurred. Please try again."
+        )
 
 @app.get("/api/verify-token/{token}")
 async def verify_token(token: str):
@@ -231,7 +300,7 @@ async def complete_onboarding(onboarding_data: OnboardingData):
 async def health_check():
     """Health check endpoint for Railway."""
     try:
-        # Test Supabase connection
+        # Test Supabase connection using admin client
         response = supabase.table("users").select("count", count="exact").limit(1).execute()
         if hasattr(response, 'status_code') and response.status_code >= 400:
             logger.error(f"Health check failed: Supabase error {response.status_code}")
@@ -264,94 +333,55 @@ async def health_check():
 
 @app.post("/api/users")
 async def create_user(user_data: UserCreate, background_tasks: BackgroundTasks):
-    """
-    Create a new user in the database.
-    
-    Args:
-        user_data: User information including email, name, and target language
-        
-    Returns:
-        dict: Success response with user ID and message
-        
-    Raises:
-        HTTPException: If user already exists or database operation fails
-    """
+    """Create a new user and send welcome email."""
     try:
-        logger.info(f"Creating user: {user_data.email}")
-        
-        # Check if user already exists in auth.users
-        try:
-            # Use list_users and filter instead of get_user_by_email
-            existing_users = supabase.auth.admin.list_users()
-            existing_user = next(
-                (user for user in existing_users if user.email == user_data.email.lower()),
-                None
-            )
-            if existing_user:
-                logger.warning(f"User already exists: {user_data.email}")
-                raise HTTPException(status_code=400, detail="User already exists")
-        except Exception as e:
-            if "User not found" not in str(e):
-                raise
-        
-        # Create user in auth.users with metadata
+        # Prepare user data for Supabase Auth
         signup_data = {
-            "email": user_data.email.lower().strip(),
-            "password": secrets.token_urlsafe(30),  # Generate a secure random password
-            "email_confirm": True,  # Auto-confirm for now
+            "email": user_data.email.lower(),
             "user_metadata": {
-                "name": user_data.name.strip(),
-                "target_language": user_data.language.lower().strip(),
-                "proficiency_level": 1,  # Default starting level
-                "topics_of_interest": "",  # Will be set during onboarding
-                "learning_goal": None,  # Will be set during onboarding
-                "motivation_goal": None,  # Will be set during onboarding
-                "target_proficiency": 50,  # Default target
-                "email_schedule": {"frequency": "weekly"}
-            }
-        }
-        
-        auth_response = supabase.auth.admin.create_user(signup_data)
-        
-        if not auth_response or not auth_response.user:
-            logger.error("Failed to create auth user")
-            raise HTTPException(status_code=500, detail="Failed to create user")
-        
-        # The trigger will automatically create the user profile in public.users
-        
-        # Generate magic link for onboarding
-        magic_link_response = supabase.auth.admin.generate_link(
-            type="magiclink",
-            email=user_data.email,
-            redirect_to="https://itsbennie.com/onboard"  # Adjust this URL as needed
-        )
-        
-        if not magic_link_response:
-            logger.error("Failed to generate magic link")
-            raise HTTPException(status_code=500, detail="Failed to generate verification link")
-        
-        # Send welcome email with magic link
-        background_tasks.add_task(
-            send_welcome_email,
-            user_name=user_data.name,
-            user_email=user_data.email,
-            user_language=user_data.language,
-            user_token=magic_link_response.properties.action_link
-        )
-        
-        return {
-            "success": True,
-            "user_id": auth_response.user.id,
-            "message": "User created successfully. Check your email to complete onboarding.",
-            "user": {
-                "email": user_data.email,
                 "name": user_data.name,
                 "target_language": user_data.language
             }
         }
         
-    except HTTPException:
-        raise
+        # Create user using service role key
+        auth_response = supabase.auth.admin.create_user(signup_data)
+        
+        if not auth_response or not auth_response.user:
+            logger.error("Failed to create user in Supabase Auth")
+            raise HTTPException(status_code=500, detail="Failed to create user")
+        
+        # Generate magic link
+        sign_in_token = supabase.auth.admin.generate_link(
+            {
+                "email": user_data.email,
+                "type": "magiclink",
+                "redirect_to": "https://itsbennie.com/onboard"
+            }
+        )
+        
+        if not sign_in_token:
+            logger.error("Failed to generate magic link")
+            raise HTTPException(status_code=500, detail="Failed to generate magic link")
+        
+        # Schedule welcome email
+        background_tasks.add_task(
+            send_welcome_email,
+            user_data.email,
+            user_data.name,
+            sign_in_token
+        )
+        
+        return {
+            "success": True,
+            "user": {
+                "email": user_data.email,
+                "name": user_data.name,
+                "target_language": user_data.language
+            },
+            "user_id": auth_response.user.id
+        }
+        
     except Exception as e:
         logger.error(f"Unexpected error in create_user: {e}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")

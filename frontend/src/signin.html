@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign In - Bennie</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .signin-container {
+            max-width: 500px;
+            margin: 40px auto;
+            padding: 40px 20px;
+        }
+
+        .signin-card {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-light);
+        }
+
+        .signin-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 32px;
+            font-weight: 600;
+            color: var(--bittersweet);
+            margin: 0 0 15px 0;
+            text-align: center;
+        }
+
+        .signin-subtitle {
+            font-size: 16px;
+            color: var(--text-secondary);
+            margin: 0 0 30px 0;
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+            font-size: 15px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid var(--border-light);
+            border-radius: 8px;
+            font-size: 15px;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.3s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--bittersweet);
+            box-shadow: 0 0 0 3px rgba(250, 117, 97, 0.1);
+        }
+
+        .signin-button {
+            width: 100%;
+            background: var(--bittersweet);
+            color: white;
+            border: none;
+            padding: 14px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .signin-button:hover {
+            background: var(--tan);
+            color: var(--night);
+            transform: translateY(-2px);
+        }
+
+        .signin-button:disabled {
+            background-color: var(--border-light);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            text-align: center;
+            margin: 24px 0;
+            color: var(--text-light);
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .divider span {
+            margin: 0 10px;
+            font-size: 14px;
+        }
+
+        .oauth-buttons {
+            display: grid;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .oauth-button {
+            width: 100%;
+            padding: 12px 24px;
+            border: 2px solid var(--border-light);
+            border-radius: 8px;
+            background: white;
+            color: var(--text-primary);
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .oauth-button:hover {
+            border-color: var(--bittersweet);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+        }
+
+        .oauth-button svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .new-user-message {
+            text-align: center;
+            margin-top: 24px;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .new-user-message a {
+            color: var(--bittersweet);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+
+        .new-user-message a:hover {
+            color: var(--tan);
+        }
+
+        .error-message {
+            display: none;
+            color: var(--error-red);
+            font-size: 14px;
+            margin-top: 8px;
+            padding: 8px 12px;
+            background: rgba(239, 68, 68, 0.1);
+            border-radius: 6px;
+        }
+
+        .loading .signin-button {
+            background-color: var(--border-light);
+            cursor: wait;
+        }
+
+        @media (max-width: 480px) {
+            .signin-card {
+                padding: 24px;
+            }
+
+            .signin-title {
+                font-size: 28px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="signin-container">
+            <div class="signin-card">
+                <h1 class="signin-title">Welcome Back!</h1>
+                <p class="signin-subtitle">Sign in to continue your language learning journey</p>
+
+                <form id="signinForm">
+                    <div class="form-group">
+                        <label for="email" class="form-label">Email address</label>
+                        <input 
+                            type="email" 
+                            id="email" 
+                            class="form-input" 
+                            placeholder="Enter your email"
+                            required
+                        >
+                        <div class="error-message" id="emailError"></div>
+                    </div>
+
+                    <button type="submit" class="signin-button" id="signinButton">
+                        <span>Send Magic Link</span>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+                        </svg>
+                    </button>
+
+                    <div class="divider">
+                        <span>Or sign in with</span>
+                    </div>
+
+                    <div class="oauth-buttons">
+                        <!-- Placeholder buttons for future OAuth providers -->
+                        <button type="button" class="oauth-button" disabled>
+                            <svg viewBox="0 0 24 24" width="24" height="24">
+                                <path fill="currentColor" d="M12.545,12.151L12.545,12.151c0,1.054,0.855,1.909,1.909,1.909h3.536c-0.607,1.972-2.101,3.467-4.26,3.467c-2.624,0-4.747-2.124-4.747-4.747s2.124-4.747,4.747-4.747c1.112,0,2.084,0.362,2.854,0.98l1.429-1.429c-1.178-1.038-2.697-1.551-4.283-1.551c-3.813,0-6.888,3.075-6.888,6.888s3.075,6.888,6.888,6.888c5.041,0,6.888-4.527,6.888-8.299c0-0.503-0.057-0.875-0.126-1.253h-6.766V12.151z"/>
+                            </svg>
+                            <span>Google (Coming Soon)</span>
+                        </button>
+                        <button type="button" class="oauth-button" disabled>
+                            <svg viewBox="0 0 24 24" width="24" height="24">
+                                <path fill="currentColor" d="M12 2C6.477 2 2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.879V14.89h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.989C18.343 21.129 22 16.99 22 12c0-5.523-4.477-10-10-10z"/>
+                            </svg>
+                            <span>Facebook (Coming Soon)</span>
+                        </button>
+                        <button type="button" class="oauth-button" disabled>
+                            <svg viewBox="0 0 24 24" width="24" height="24">
+                                <path fill="currentColor" d="M12 2C6.477 2 2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.879V14.89h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.989C18.343 21.129 22 16.99 22 12c0-5.523-4.477-10-10-10z"/>
+                            </svg>
+                            <span>Microsoft (Coming Soon)</span>
+                        </button>
+                    </div>
+
+                    <div class="new-user-message">
+                        New to Bennie? <a href="/">Start your journey here</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/signin.js"></script>
+</body>
+</html> 
