@@ -67,7 +67,7 @@ except Exception as e:
 app = FastAPI(
     title="Bennie API",
     description="Backend API for Bennie language learning platform",
-    root_path="/api"  # Add this to handle the /api prefix
+    # Remove root_path as Railway handles this
 )
 
 # CORS middleware configuration
@@ -116,7 +116,7 @@ async def read_signin():
     """Serve the sign-in page."""
     return FileResponse("frontend/src/signin.html")
 
-@app.post("/auth/signin")  # Changed from /api/auth/signin since we have root_path="/api"
+@app.post("/api/auth/signin")  # Add back the full path
 async def signin(signin_data: SignInRequest):
     """
     Generate and send a magic link for user sign-in.
