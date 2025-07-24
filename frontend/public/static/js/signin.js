@@ -6,17 +6,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Helper function to show error message
     const showError = (message) => {
+        console.error('Error displaying:', message);
         emailError.textContent = message;
         emailError.style.display = 'block';
     };
 
     // Helper function to hide error message
     const hideError = () => {
+        console.log('Clearing error display');
         emailError.style.display = 'none';
     };
 
     // Helper function to set loading state
     const setLoading = (isLoading) => {
+        console.log('Setting loading state:', isLoading);
         if (isLoading) {
             form.classList.add('loading');
             signinButton.disabled = true;
@@ -51,25 +54,31 @@ document.addEventListener('DOMContentLoaded', () => {
     // Handle form submission
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
+        console.log('Form submission started');
         hideError();
 
         const email = emailInput.value.trim();
+        console.log('Attempting sign in for email:', email);
         
         // Basic email validation
         if (!email) {
+            console.warn('Empty email submitted');
             showError('Please enter your email address');
             return;
         }
 
         if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+            console.warn('Invalid email format:', email);
             showError('Please enter a valid email address');
             return;
         }
 
         try {
+            console.log('Setting loading state before API call');
             setLoading(true);
 
             // Send sign-in request to backend
+            console.log('Making API request to /api/auth/signin');
             const response = await fetch('/api/auth/signin', {
                 method: 'POST',
                 headers: {
@@ -78,13 +87,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify({ email }),
             });
 
+            console.log('API Response status:', response.status);
             const data = await response.json();
+            console.log('API Response data:', data);
 
             if (!response.ok) {
+                console.error('API error response:', data);
                 throw new Error(data.detail || data.message || 'Failed to send magic link');
             }
 
             // Show success message
+            console.log('Showing success message');
             emailInput.value = '';
             form.innerHTML = `
                 <div style="text-align: center; padding: 20px;">
@@ -102,12 +115,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             `;
         } catch (error) {
+            console.error('Error in sign-in process:', error);
             showError(error.message || 'Something went wrong. Please try again.');
         } finally {
+            console.log('Resetting loading state');
             setLoading(false);
         }
     });
 
     // Clear error when user types
-    emailInput.addEventListener('input', hideError);
+    emailInput.addEventListener('input', () => {
+        console.log('Input changed, clearing error');
+        hideError();
+    });
 }); 

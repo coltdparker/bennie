@@ -116,7 +116,7 @@ async def read_signin():
     """Serve the sign-in page."""
     return FileResponse("frontend/src/signin.html")
 
-@app.post("/api/auth/signin")  # Add back the full path
+@app.post("/api/auth/signin")
 async def signin(signin_data: SignInRequest):
     """
     Generate and send a magic link for user sign-in.
@@ -132,38 +132,46 @@ async def signin(signin_data: SignInRequest):
     """
     try:
         email = signin_data.email.lower()
-        logger.info(f"Sign-in request for email: {email}")
+        logger.info(f"[SIGNIN] Starting sign-in process for email: {email}")
         
         # First get the auth user to get their ID
         try:
-            # Get auth user first
+            logger.info("[SIGNIN] Fetching users list from Supabase Auth")
             users = supabase.auth.admin.list_users()
+            logger.info(f"[SIGNIN] Retrieved {len(users) if users else 0} users from Supabase Auth")
+            
             auth_user = next(
                 (user for user in users if user.email == email),
                 None
             )
             
             if not auth_user:
-                logger.warning(f"User not found in auth: {email}")
+                logger.warning(f"[SIGNIN] User not found in auth: {email}")
                 raise HTTPException(
                     status_code=404,
                     detail="No account found with this email. Please start from the homepage."
                 )
+            
+            logger.info(f"[SIGNIN] Found auth user with ID: {auth_user.id}")
             
             # Now check if they exist in our users table
+            logger.info(f"[SIGNIN] Checking users table for auth_user_id: {auth_user.id}")
             user_response = supabase.table("users").select("auth_user_id").eq("auth_user_id", auth_user.id).execute()
+            logger.info(f"[SIGNIN] Users table response: {user_response.data if user_response else 'No response'}")
             
             if not user_response.data:
-                logger.warning(f"User not found in users table: {email}")
+                logger.warning(f"[SIGNIN] User not found in users table: {email}")
                 raise HTTPException(
                     status_code=404,
                     detail="No account found with this email. Please start from the homepage."
                 )
+            
+            logger.info("[SIGNIN] User verified in both auth and users table")
                 
         except HTTPException:
             raise
         except Exception as e:
-            logger.error(f"Error checking user existence: {e}")
+            logger.error(f"[SIGNIN] Error checking user existence: {str(e)}", exc_info=True)
             raise HTTPException(
                 status_code=500,
                 detail="Failed to verify user account. Please try again."
@@ -171,6 +179,7 @@ async def signin(signin_data: SignInRequest):
         
         # Generate magic link
         try:
+            logger.info("[SIGNIN] Attempting to generate magic link")
             # Use the sign-in method which automatically sends the magic link
             auth_response = supabase.auth.sign_in_with_otp({
                 "email": email,
@@ -179,7 +188,7 @@ async def signin(signin_data: SignInRequest):
                 }
             })
             
-            logger.info(f"Magic link generated for {email}")
+            logger.info(f"[SIGNIN] Magic link generated successfully: {auth_response if auth_response else 'No response'}")
             
             return {
                 "success": True,
@@ -187,7 +196,7 @@ async def signin(signin_data: SignInRequest):
             }
             
         except Exception as e:
-            logger.error(f"Failed to generate magic link: {e}")
+            logger.error(f"[SIGNIN] Failed to generate magic link: {str(e)}", exc_info=True)
             raise HTTPException(
                 status_code=500,
                 detail="Failed to generate sign-in link. Please try again."
@@ -196,7 +205,7 @@ async def signin(signin_data: SignInRequest):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Unexpected error in signin: {e}")
+        logger.error(f"[SIGNIN] Unexpected error in signin: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=500,
             detail="An unexpected error occurred. Please try again."
