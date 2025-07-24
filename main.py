@@ -48,10 +48,14 @@ if not all([SUPABASE_URL, SUPABASE_KEY]):
 try:
     logger.info("Initializing Supabase client...")
     
-    # Single client with service role key
+    # Single client with service role key and proper headers
     supabase: Client = create_client(
         SUPABASE_URL,
-        SUPABASE_KEY
+        SUPABASE_KEY,
+        headers={
+            "apiKey": SUPABASE_KEY,
+            "Authorization": f"Bearer {SUPABASE_KEY}"
+        }
     )
     logger.info("Supabase client initialized successfully")
     
@@ -135,13 +139,21 @@ async def signin(signin_data: SignInRequest):
         logger.info(f"[SIGNIN] Starting sign-in process for email: {email}")
         
         try:
-            # Send magic link using Supabase Auth
+            # Send magic link using Supabase Auth's email OTP
             logger.info(f"[SIGNIN] Sending magic link for: {email}")
-            auth_response = supabase.auth.sign_in_with_otp({
-                "email": email
+            auth_response = supabase.auth.sign_in_with_email_otp({
+                "email": email,
+                "options": {
+                    "email_redirect_to": "https://itsbennie.com/profile"
+                }
             })
             
+            if not auth_response:
+                logger.error("[SIGNIN] No response from Supabase Auth")
+                raise Exception("Failed to get response from auth service")
+                
             logger.info(f"[SIGNIN] Magic link sent successfully for: {email}")
+            logger.info(f"[SIGNIN] Auth response: {auth_response}")
             
             return {
                 "success": True,
@@ -150,11 +162,25 @@ async def signin(signin_data: SignInRequest):
             
         except Exception as e:
             logger.error(f"[SIGNIN] Failed to send magic link: {str(e)}", exc_info=True)
-            raise HTTPException(
-                status_code=500,
-                detail="Failed to send sign-in link. Please try again."
-            )
+            # Check for specific error types
+            if "rate limit" in str(e).lower():
+                raise HTTPException(
+                    status_code=429,
+                    detail="Too many sign-in attempts. Please try again later."
+                )
+            elif "not found" in str(e).lower() or "not exist" in str(e).lower():
+                raise HTTPException(
+                    status_code=404,
+                    detail="No account found with this email. Please start from the homepage."
+                )
+            else:
+                raise HTTPException(
+                    status_code=500,
+                    detail="Failed to send sign-in link. Please try again."
+                )
             
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"[SIGNIN] Unexpected error in signin: {str(e)}", exc_info=True)
         raise HTTPException(
