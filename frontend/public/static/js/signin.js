@@ -81,7 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.message || 'Failed to send magic link');
+                throw new Error(data.detail || data.message || 'Failed to send magic link');
             }
 
             // Show success message
