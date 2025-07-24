@@ -130,41 +130,33 @@ async def signin(signin_data: SignInRequest):
         email = signin_data.email.lower()
         logger.info(f"Sign-in request for email: {email}")
         
-        # Check if user exists in auth
+        # Check if user exists in our users table first
         try:
-            # List users and find by email
-            users = supabase.auth.admin.list_users()
-            auth_user = next(
-                (user for user in users if user.email == email),
-                None
-            )
-            
-            if not auth_user:
-                logger.warning(f"User not found: {email}")
+            user_response = supabase.table("users").select("auth_user_id").execute()
+            if not user_response.data:
+                logger.warning(f"User not found in users table: {email}")
                 raise HTTPException(
                     status_code=404,
                     detail="No account found with this email. Please start from the homepage."
                 )
                 
         except Exception as e:
-            logger.error(f"Error checking user existence: {e}")
+            logger.error(f"Error checking user existence in users table: {e}")
             raise HTTPException(
-                status_code=404,
-                detail="No account found with this email. Please start from the homepage."
+                status_code=500,
+                detail="Failed to verify user account. Please try again."
             )
         
         # Generate magic link
         try:
-            # Use admin.generate_link for server-side magic link generation
-            sign_in_token = supabase.auth.admin.generate_link({
+            # Use the sign-in method which automatically sends the magic link
+            auth_response = supabase.auth.sign_in_with_otp({
                 "email": email,
-                "type": "magiclink",
-                "redirect_to": "https://itsbennie.com/profile"
+                "options": {
+                    "data": {"redirect_to": "https://itsbennie.com/profile"}
+                }
             })
             
-            if not sign_in_token:
-                raise Exception("Failed to generate magic link")
-                
             logger.info(f"Magic link generated for {email}")
             
             return {
