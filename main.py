@@ -119,7 +119,7 @@ async def read_signin():
 @app.post("/api/auth/signin")
 async def signin(signin_data: SignInRequest):
     """
-    Generate and send a magic link for user sign-in.
+    Send a magic link for user sign-in using Supabase Auth.
     
     Args:
         signin_data: User's email address
@@ -135,20 +135,17 @@ async def signin(signin_data: SignInRequest):
         logger.info(f"[SIGNIN] Starting sign-in process for email: {email}")
         
         try:
-            # Use client-side auth method for magic links
+            # Send magic link using Supabase Auth
             logger.info(f"[SIGNIN] Sending magic link for: {email}")
-            auth_response = supabase.auth.sign_in({
-                "email": email,
-                "options": {
-                    "email_redirect_to": "https://itsbennie.com/profile"
-                }
+            auth_response = supabase.auth.sign_in_with_otp({
+                "email": email
             })
             
             logger.info(f"[SIGNIN] Magic link sent successfully for: {email}")
             
             return {
                 "success": True,
-                "message": "Magic link sent successfully"
+                "message": "Magic link sent successfully. Please check your email."
             }
             
         except Exception as e:
