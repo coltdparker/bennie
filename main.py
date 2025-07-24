@@ -135,12 +135,10 @@ async def signin(signin_data: SignInRequest):
         logger.info(f"[SIGNIN] Starting sign-in process for email: {email}")
         
         try:
-            # Send magic link - Supabase will handle verification
-            auth_response = supabase.auth.sign_in_with_otp({
+            # Use magic link specific method
+            auth_response = supabase.auth.sign_in_with_magic_link({
                 "email": email,
-                "options": {
-                    "data": {"redirect_to": "https://itsbennie.com/profile"}
-                }
+                "redirect_to": "https://itsbennie.com/profile"
             })
             
             logger.info(f"[SIGNIN] Magic link sent successfully for: {email}")
