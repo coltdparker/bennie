@@ -128,46 +128,14 @@ async def signin(signin_data: SignInRequest):
         dict: Success response
         
     Raises:
-        HTTPException: If user not found or magic link generation fails
+        HTTPException: If magic link generation fails
     """
     try:
         email = signin_data.email.lower()
         logger.info(f"[SIGNIN] Starting sign-in process for email: {email}")
         
         try:
-            # Check if user exists in our users table
-            logger.info(f"[SIGNIN] Checking users table for email: {email}")
-            user_response = supabase.table("users").select("*").execute()
-            logger.info(f"[SIGNIN] Users table response: {user_response.data if user_response else 'No response'}")
-            
-            # Find user by email in the response data
-            user = next(
-                (u for u in user_response.data if u.get("email", "").lower() == email),
-                None
-            )
-            
-            if not user:
-                logger.warning(f"[SIGNIN] User not found in users table: {email}")
-                raise HTTPException(
-                    status_code=404,
-                    detail="No account found with this email. Please start from the homepage."
-                )
-            
-            logger.info(f"[SIGNIN] Found user in database: {user.get('auth_user_id')}")
-                
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.error(f"[SIGNIN] Error checking user existence: {str(e)}", exc_info=True)
-            raise HTTPException(
-                status_code=500,
-                detail="Failed to verify user account. Please try again."
-            )
-        
-        # Generate magic link
-        try:
-            logger.info("[SIGNIN] Attempting to generate magic link")
-            # Use the sign-in method which automatically sends the magic link
+            # Send magic link - Supabase will handle verification
             auth_response = supabase.auth.sign_in_with_otp({
                 "email": email,
                 "options": {
@@ -175,7 +143,7 @@ async def signin(signin_data: SignInRequest):
                 }
             })
             
-            logger.info(f"[SIGNIN] Magic link generated successfully: {auth_response if auth_response else 'No response'}")
+            logger.info(f"[SIGNIN] Magic link sent successfully for: {email}")
             
             return {
                 "success": True,
@@ -183,14 +151,12 @@ async def signin(signin_data: SignInRequest):
             }
             
         except Exception as e:
-            logger.error(f"[SIGNIN] Failed to generate magic link: {str(e)}", exc_info=True)
+            logger.error(f"[SIGNIN] Failed to send magic link: {str(e)}", exc_info=True)
             raise HTTPException(
                 status_code=500,
-                detail="Failed to generate sign-in link. Please try again."
+                detail="Failed to send sign-in link. Please try again."
             )
             
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error(f"[SIGNIN] Unexpected error in signin: {str(e)}", exc_info=True)
         raise HTTPException(
