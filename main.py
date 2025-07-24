@@ -134,39 +134,26 @@ async def signin(signin_data: SignInRequest):
         email = signin_data.email.lower()
         logger.info(f"[SIGNIN] Starting sign-in process for email: {email}")
         
-        # First get the auth user to get their ID
         try:
-            logger.info("[SIGNIN] Fetching users list from Supabase Auth")
-            users = supabase.auth.admin.list_users()
-            logger.info(f"[SIGNIN] Retrieved {len(users) if users else 0} users from Supabase Auth")
+            # Check if user exists in our users table
+            logger.info(f"[SIGNIN] Checking users table for email: {email}")
+            user_response = supabase.table("users").select("*").execute()
+            logger.info(f"[SIGNIN] Users table response: {user_response.data if user_response else 'No response'}")
             
-            auth_user = next(
-                (user for user in users if user.email == email),
+            # Find user by email in the response data
+            user = next(
+                (u for u in user_response.data if u.get("email", "").lower() == email),
                 None
             )
             
-            if not auth_user:
-                logger.warning(f"[SIGNIN] User not found in auth: {email}")
-                raise HTTPException(
-                    status_code=404,
-                    detail="No account found with this email. Please start from the homepage."
-                )
-            
-            logger.info(f"[SIGNIN] Found auth user with ID: {auth_user.id}")
-            
-            # Now check if they exist in our users table
-            logger.info(f"[SIGNIN] Checking users table for auth_user_id: {auth_user.id}")
-            user_response = supabase.table("users").select("auth_user_id").eq("auth_user_id", auth_user.id).execute()
-            logger.info(f"[SIGNIN] Users table response: {user_response.data if user_response else 'No response'}")
-            
-            if not user_response.data:
+            if not user:
                 logger.warning(f"[SIGNIN] User not found in users table: {email}")
                 raise HTTPException(
                     status_code=404,
                     detail="No account found with this email. Please start from the homepage."
                 )
             
-            logger.info("[SIGNIN] User verified in both auth and users table")
+            logger.info(f"[SIGNIN] Found user in database: {user.get('auth_user_id')}")
                 
         except HTTPException:
             raise
@@ -383,6 +370,34 @@ async def create_user(user_data: UserCreate, background_tasks: BackgroundTasks):
         if not auth_response or not auth_response.user:
             logger.error("Failed to create user in Supabase Auth")
             raise HTTPException(status_code=500, detail="Failed to create user")
+            
+        # Insert user into our users table
+        try:
+            user_insert_data = {
+                "auth_user_id": auth_response.user.id,
+                "email": user_data.email.lower(),
+                "name": user_data.name,
+                "target_language": user_data.language,
+                "created_at": "now()",
+                "updated_at": "now()"
+            }
+            
+            logger.info(f"Inserting user into users table: {user_insert_data}")
+            user_insert_response = supabase.table("users").insert(user_insert_data).execute()
+            
+            if not user_insert_response.data:
+                logger.error("Failed to insert user into users table")
+                raise HTTPException(status_code=500, detail="Failed to create user profile")
+                
+            logger.info("Successfully created user in both auth and users tables")
+        except Exception as e:
+            logger.error(f"Failed to insert user into users table: {e}")
+            # Try to clean up auth user if users table insert fails
+            try:
+                supabase.auth.admin.delete_user(auth_response.user.id)
+            except:
+                pass
+            raise HTTPException(status_code=500, detail="Failed to create user profile")
         
         # Generate magic link
         sign_in_token = supabase.auth.admin.generate_link(
