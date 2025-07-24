@@ -130,9 +130,14 @@ async def signin(signin_data: SignInRequest):
         email = signin_data.email.lower()
         logger.info(f"Sign-in request for email: {email}")
         
-        # Check if user exists in auth using get_user_by_email
+        # Check if user exists in auth
         try:
-            auth_user = supabase.auth.admin.get_user_by_email(email)
+            # List users and find by email (since get_user_by_email is not available)
+            users_response = supabase.auth.admin.list_users()
+            auth_user = next(
+                (user for user in users_response if user.email == email),
+                None
+            )
             
             if not auth_user:
                 logger.warning(f"User not found: {email}")
@@ -150,15 +155,14 @@ async def signin(signin_data: SignInRequest):
         
         # Generate magic link
         try:
-            sign_in_token = supabase.auth.admin.generate_link({
+            # Use the sign-in method which automatically sends the magic link
+            auth_response = supabase.auth.sign_in_with_otp({
                 "email": email,
-                "type": "magiclink",
-                "redirect_to": "https://itsbennie.com/profile"  # Redirect to profile page after verification
+                "options": {
+                    "data": {"redirect_to": "https://itsbennie.com/profile"}
+                }
             })
             
-            if not sign_in_token:
-                raise Exception("Failed to generate magic link")
-                
             logger.info(f"Magic link generated for {email}")
             
             return {
