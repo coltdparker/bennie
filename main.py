@@ -135,19 +135,16 @@ async def signin(signin_data: SignInRequest):
         logger.info(f"[SIGNIN] Starting sign-in process for email: {email}")
         
         try:
-            # Generate magic link using admin API
-            logger.info(f"[SIGNIN] Generating magic link for: {email}")
-            sign_in_token = supabase.auth.admin.generate_link({
+            # Use client-side auth method for magic links
+            logger.info(f"[SIGNIN] Sending magic link for: {email}")
+            auth_response = supabase.auth.sign_in({
                 "email": email,
-                "type": "magiclink",
-                "redirect_to": "https://itsbennie.com/profile"
+                "options": {
+                    "email_redirect_to": "https://itsbennie.com/profile"
+                }
             })
             
-            if not sign_in_token:
-                logger.error("[SIGNIN] Failed to generate magic link - no token returned")
-                raise Exception("No magic link token generated")
-                
-            logger.info(f"[SIGNIN] Magic link generated successfully for: {email}")
+            logger.info(f"[SIGNIN] Magic link sent successfully for: {email}")
             
             return {
                 "success": True,
