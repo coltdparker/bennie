@@ -58,10 +58,8 @@ try:
                 "autoRefreshToken": True,
                 "persistSession": True
             },
-            "global": {
-                "headers": {
-                    "Authorization": f"Bearer {SUPABASE_KEY}"
-                }
+            "headers": {
+                "apikey": SUPABASE_KEY
             }
         }
     )
@@ -70,13 +68,12 @@ try:
     
     # Test connection with proper error handling
     try:
-        test_response = supabase.auth.get_user()
-        logger.info("Successfully tested Supabase connection")
-    except Exception as auth_e:
-        logger.warning(f"Auth test failed (expected for service role): {auth_e}")
-        # Test database connection instead
+        # First try a simple database query as it's more reliable
         test_response = supabase.table("users").select("count", count="exact").limit(1).execute()
         logger.info("Successfully tested Supabase database connection")
+    except Exception as db_e:
+        logger.error(f"Database test failed: {db_e}")
+        raise RuntimeError(f"Failed to connect to database: {str(db_e)}")
     
 except Exception as e:
     logger.error(f"Failed to initialize Supabase client: {str(e)}")
@@ -597,9 +594,18 @@ async def get_auth_config():
     Provide Supabase configuration for client-side authentication.
     Only returns the public anon key and URL, never the service role key.
     """
+    # Get the anon key from environment
+    SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
+    if not SUPABASE_ANON_KEY:
+        logger.error("Missing SUPABASE_ANON_KEY environment variable")
+        raise HTTPException(
+            status_code=500,
+            detail="Server configuration error"
+        )
+    
     return {
         "supabaseUrl": os.getenv("SUPABASE_URL"),
-        "supabaseKey": os.getenv("SUPABASE_KEY")
+        "supabaseKey": SUPABASE_ANON_KEY  # Use anon key for client-side auth
     }
 
 if __name__ == "__main__":

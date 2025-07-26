@@ -258,12 +258,22 @@
                 const supabase = supabase.createClient(config.url, config.anonKey, {
                     auth: {
                         autoRefreshToken: true,
-                        persistSession: true
+                        persistSession: true,
+                        detectSessionInUrl: true
+                    },
+                    headers: {
+                        apikey: config.anonKey
                     }
                 });
                 window.supabase = supabase;
+                console.log('Supabase client initialized successfully');
             } catch (error) {
                 console.error('Failed to initialize Supabase:', error);
+                // Show error to user
+                const errorDisplay = document.createElement('div');
+                errorDisplay.className = 'error-message';
+                errorDisplay.textContent = 'Failed to initialize authentication. Please try again later.';
+                document.querySelector('.oauth-buttons').before(errorDisplay);
             }
         }
 
