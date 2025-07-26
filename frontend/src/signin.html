@@ -256,13 +256,13 @@
             try {
                 const config = await getSupabaseConfig();
                 const supabase = supabase.createClient(config.url, config.anonKey, {
-                    auth: {
-                        autoRefreshToken: true,
-                        persistSession: true,
-                        detectSessionInUrl: true
+                    db: {
+                        schema: 'public'
                     },
-                    headers: {
-                        apikey: config.anonKey
+                    global: {
+                        headers: {
+                            apikey: config.anonKey
+                        }
                     }
                 });
                 window.supabase = supabase;

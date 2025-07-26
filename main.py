@@ -49,18 +49,16 @@ if not all([SUPABASE_URL, SUPABASE_KEY]):
 try:
     logger.info("Initializing Supabase client...")
     
-    # Initialize Supabase client with proper configuration
+    # Initialize Supabase client
     supabase: Client = create_client(
         supabase_url=SUPABASE_URL,
         supabase_key=SUPABASE_KEY,
         options={
-            "auth": {
-                "autoRefreshToken": True,
-                "persistSession": True
-            },
+            "schema": "public",
             "headers": {
                 "apikey": SUPABASE_KEY
-            }
+            },
+            "postgrest_client_timeout": 60
         }
     )
     
@@ -68,7 +66,7 @@ try:
     
     # Test connection with proper error handling
     try:
-        # First try a simple database query as it's more reliable
+        # Test database connection
         test_response = supabase.table("users").select("count", count="exact").limit(1).execute()
         logger.info("Successfully tested Supabase database connection")
     except Exception as db_e:
