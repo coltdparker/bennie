@@ -2,6 +2,7 @@
 """
 Main application entry point for Bennie.
 This file serves the frontend and provides API endpoints.
+Version: 2025.07.25.1 - Fixed Supabase client initialization
 """
 
 import os
@@ -48,20 +49,25 @@ if not all([SUPABASE_URL, SUPABASE_KEY]):
 try:
     logger.info("Initializing Supabase client...")
     
-    # Initialize single client with service role key
+    # Initialize Supabase client with proper configuration
     supabase: Client = create_client(
-        SUPABASE_URL,
-        SUPABASE_KEY
+        supabase_url=SUPABASE_URL,
+        supabase_key=SUPABASE_KEY,
     )
-    logger.info("Supabase client initialized successfully")
     
-    # Test connection immediately
-    test_response = supabase.table("users").select("count", count="exact").limit(1).execute()
-    logger.info("Successfully tested Supabase connection")
+    # Test connection with proper error handling
+    try:
+        test_response = supabase.auth.get_user()
+        logger.info("Successfully tested Supabase connection")
+    except Exception as auth_e:
+        logger.warning(f"Auth test failed (expected for service role): {auth_e}")
+        # Test database connection instead
+        test_response = supabase.table("users").select("count", count="exact").limit(1).execute()
+        logger.info("Successfully tested Supabase database connection")
     
 except Exception as e:
-    logger.error(f"Failed to initialize or test Supabase client: {e}")
-    raise
+    logger.error(f"Failed to initialize Supabase client: {str(e)}")
+    raise RuntimeError(f"Supabase initialization failed: {str(e)}")
 
 # Create FastAPI app
 app = FastAPI(
@@ -98,8 +104,16 @@ class OnboardingData(BaseModel):
     motivation_goal: str
     topics_of_interest: str
 
+# Pydantic models for authentication
 class SignInRequest(BaseModel):
     email: EmailStr
+    password: str
+
+class SignUpRequest(BaseModel):
+    email: EmailStr
+    password: str
+    name: str
+    language: str
 
 @app.get("/")
 async def read_root():
@@ -119,69 +133,60 @@ async def read_signin():
 @app.post("/api/auth/signin")
 async def signin(signin_data: SignInRequest):
     """
-    Send a magic link for user sign-in using Supabase Auth.
+    Sign in a user with email and password using Supabase Auth.
     
     Args:
-        signin_data: User's email address
+        signin_data: User's email and password
         
     Returns:
-        dict: Success response
+        dict: Auth session data including access token
         
     Raises:
-        HTTPException: If magic link generation fails
+        HTTPException: If authentication fails
     """
     try:
         email = signin_data.email.lower()
         logger.info(f"[SIGNIN] Starting sign-in process for email: {email}")
         
         try:
-            # Send magic link using Supabase Auth's email OTP
-            logger.info(f"[SIGNIN] Sending magic link for: {email}")
-            auth_response = supabase.auth.sign_in_with_email_otp({
+            # Attempt to sign in with email/password
+            auth_response = supabase.auth.sign_in_with_password({
                 "email": email,
-                "options": {
-                    "email_redirect_to": "https://itsbennie.com/profile"
-                }
+                "password": signin_data.password
             })
             
-            if not auth_response:
-                logger.error("[SIGNIN] No response from Supabase Auth")
-                raise Exception("Failed to get response from auth service")
-                
-            logger.info(f"[SIGNIN] Magic link sent successfully for: {email}")
-            logger.info(f"[SIGNIN] Auth response: {auth_response}")
+            if not auth_response or not auth_response.user:
+                logger.error("[SIGNIN] No user data in auth response")
+                raise HTTPException(
+                    status_code=401,
+                    detail="Invalid email or password"
+                )
+            
+            # Get user profile data
+            user_data = supabase.table("users").select("*").eq("email", email).single().execute()
+            
+            logger.info(f"[SIGNIN] User {email} signed in successfully")
             
             return {
                 "success": True,
-                "message": "Magic link sent successfully. Please check your email."
+                "session": auth_response.session,
+                "user": user_data.data if user_data else None
             }
             
-        except Exception as e:
-            logger.error(f"[SIGNIN] Failed to send magic link: {str(e)}", exc_info=True)
-            # Check for specific error types
-            if "rate limit" in str(e).lower():
-                raise HTTPException(
-                    status_code=429,
-                    detail="Too many sign-in attempts. Please try again later."
-                )
-            elif "not found" in str(e).lower() or "not exist" in str(e).lower():
-                raise HTTPException(
-                    status_code=404,
-                    detail="No account found with this email. Please start from the homepage."
-                )
-            else:
-                raise HTTPException(
-                    status_code=500,
-                    detail="Failed to send sign-in link. Please try again."
-                )
+        except Exception as auth_e:
+            logger.error(f"[SIGNIN] Auth error for {email}: {str(auth_e)}")
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid email or password"
+            )
             
-    except HTTPException:
-        raise
+    except HTTPException as he:
+        raise he
     except Exception as e:
-        logger.error(f"[SIGNIN] Unexpected error in signin: {str(e)}", exc_info=True)
+        logger.error(f"[SIGNIN] Unexpected error: {str(e)}")
         raise HTTPException(
             status_code=500,
-            detail="An unexpected error occurred. Please try again."
+            detail="An unexpected error occurred"
         )
 
 @app.get("/api/verify-token/{token}")

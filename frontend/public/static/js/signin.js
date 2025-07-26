@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('signinForm');
     const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
     const signinButton = document.getElementById('signinButton');
     const emailError = document.getElementById('emailError');
 
@@ -20,34 +21,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // Helper function to set loading state
     const setLoading = (isLoading) => {
         console.log('Setting loading state:', isLoading);
-        if (isLoading) {
-            form.classList.add('loading');
-            signinButton.disabled = true;
-            signinButton.innerHTML = `
-                <span>Sending...</span>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" stroke-linecap="round">
-                        <animateTransform
-                            attributeName="transform"
-                            attributeType="XML"
-                            type="rotate"
-                            from="0 12 12"
-                            to="360 12 12"
-                            dur="1s"
-                            repeatCount="indefinite"
-                        />
-                    </path>
-                </svg>
-            `;
-        } else {
-            form.classList.remove('loading');
-            signinButton.disabled = false;
-            signinButton.innerHTML = `
-                <span>Send Magic Link</span>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
-                </svg>
-            `;
+        signinButton.disabled = isLoading;
+        signinButton.querySelector('span').textContent = isLoading ? 'Signing in...' : 'Sign In';
+        
+        // Toggle loading spinner
+        const spinner = signinButton.querySelector('.spinner');
+        if (spinner) {
+            spinner.style.display = isLoading ? 'inline-block' : 'none';
         }
     };
 
@@ -58,12 +38,12 @@ document.addEventListener('DOMContentLoaded', () => {
         hideError();
 
         const email = emailInput.value.trim();
-        console.log('Attempting sign in for email:', email);
+        const password = passwordInput.value;
         
-        // Basic email validation
-        if (!email) {
-            console.warn('Empty email submitted');
-            showError('Please enter your email address');
+        // Basic validation
+        if (!email || !password) {
+            console.warn('Empty email or password submitted');
+            showError('Please enter both email and password');
             return;
         }
 
@@ -84,7 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ email }),
+                body: JSON.stringify({ email, password }),
             });
 
             console.log('API Response status:', response.status);
@@ -93,39 +73,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (!response.ok) {
                 console.error('API error response:', data);
-                throw new Error(data.detail || data.message || 'Failed to send magic link');
+                throw new Error(data.detail || 'Authentication failed');
             }
 
-            // Show success message
-            console.log('Showing success message');
-            emailInput.value = '';
-            form.innerHTML = `
-                <div style="text-align: center; padding: 20px;">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--success-green)" stroke-width="2">
-                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M22 4L12 14.01l-3-3" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                    <h3 style="color: var(--success-green); margin: 16px 0;">Check your email!</h3>
-                    <p style="color: var(--text-secondary); margin-bottom: 16px;">
-                        We've sent a magic link to <strong>${email}</strong>
-                    </p>
-                    <p style="color: var(--text-light); font-size: 14px;">
-                        Click the link in the email to sign in to your account.
-                    </p>
-                </div>
-            `;
+            // Store session data
+            if (data.session) {
+                localStorage.setItem('supabase.auth.token', data.session.access_token);
+                localStorage.setItem('user', JSON.stringify(data.user));
+            }
+
+            // Redirect to profile page
+            window.location.href = '/profile';
+
         } catch (error) {
-            console.error('Error in sign-in process:', error);
-            showError(error.message || 'Something went wrong. Please try again.');
+            console.error('Sign-in error:', error);
+            showError(error.message || 'Failed to sign in. Please try again.');
         } finally {
-            console.log('Resetting loading state');
             setLoading(false);
         }
-    });
-
-    // Clear error when user types
-    emailInput.addEventListener('input', () => {
-        console.log('Input changed, clearing error');
-        hideError();
     });
 }); 

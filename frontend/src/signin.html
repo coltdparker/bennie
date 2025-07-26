@@ -210,14 +210,37 @@
                             placeholder="Enter your email"
                             required
                         >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password" class="form-label">Password</label>
+                        <input 
+                            type="password" 
+                            id="password" 
+                            class="form-input" 
+                            placeholder="Enter your password"
+                            required
+                        >
                         <div class="error-message" id="emailError"></div>
                     </div>
 
                     <button type="submit" class="signin-button" id="signinButton">
-                        <span>Send Magic Link</span>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
-                        </svg>
+                        <span>Sign In</span>
+                        <div class="spinner" style="display: none;">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" stroke-linecap="round">
+                                    <animateTransform
+                                        attributeName="transform"
+                                        attributeType="XML"
+                                        type="rotate"
+                                        from="0 12 12"
+                                        to="360 12 12"
+                                        dur="1s"
+                                        repeatCount="indefinite"
+                                    />
+                                </path>
+                            </svg>
+                        </div>
                     </button>
 
                     <div class="divider">
