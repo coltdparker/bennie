@@ -5,6 +5,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const signinButton = document.getElementById('signinButton');
     const emailError = document.getElementById('emailError');
     const forgotPasswordLink = document.getElementById('forgotPasswordLink');
+    const googleSignInButton = document.getElementById('googleSignIn');
+    const errorDisplay = document.createElement('div');
+    errorDisplay.className = 'error-message';
+    document.querySelector('.oauth-buttons').after(errorDisplay);
 
     // Helper function to show error message
     const showError = (message) => {
@@ -72,6 +76,32 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             showError(error.message || 'Failed to send reset email');
         } finally {
+            setLoading(false);
+        }
+    });
+
+    // Handle Google Sign In
+    googleSignInButton.addEventListener('click', async () => {
+        try {
+            hideError();
+            setLoading(true);
+
+            // Initialize Supabase client (make sure supabase-js is included in your HTML)
+            const { data, error } = await window.supabase.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                    redirectTo: `${window.location.origin}/profile`
+                }
+            });
+
+            if (error) throw error;
+
+            // The redirect will happen automatically
+            console.log('Redirecting to Google sign in...');
+
+        } catch (error) {
+            console.error('Google sign-in error:', error);
+            showError('Failed to initialize Google sign-in. Please try again.');
             setLoading(false);
         }
     });

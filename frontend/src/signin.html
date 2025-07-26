@@ -182,6 +182,20 @@
             cursor: wait;
         }
 
+        .auth-message {
+            text-align: center;
+            margin-bottom: 24px;
+            padding: 15px;
+            background-color: var(--light-gray);
+            border-radius: 8px;
+        }
+
+        .auth-message p {
+            margin: 0;
+            color: var(--text-primary);
+            font-size: 15px;
+        }
+
         @media (max-width: 480px) {
             .signin-card {
                 padding: 24px;
@@ -200,86 +214,56 @@
                 <h1 class="signin-title">Welcome Back!</h1>
                 <p class="signin-subtitle">Sign in to continue your language learning journey</p>
 
-                <form id="signinForm">
-                    <div class="form-group">
-                        <label for="email" class="form-label">Email address</label>
-                        <input 
-                            type="email" 
-                            id="email" 
-                            class="form-input" 
-                            placeholder="Enter your email"
-                            required
-                        >
-                    </div>
+                <div class="auth-message">
+                    <p>Currently, we support signing in with the following providers:</p>
+                </div>
 
-                    <div class="form-group">
-                        <label for="password" class="form-label">Password</label>
-                        <input 
-                            type="password" 
-                            id="password" 
-                            class="form-input" 
-                            placeholder="Enter your password"
-                            required
-                        >
-                        <div class="error-message" id="emailError"></div>
-                        <div class="forgot-password">
-                            <a href="#" id="forgotPasswordLink">Forgot your password?</a>
-                        </div>
-                    </div>
-
-                    <button type="submit" class="signin-button" id="signinButton">
-                        <span>Sign In</span>
-                        <div class="spinner" style="display: none;">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" stroke-linecap="round">
-                                    <animateTransform
-                                        attributeName="transform"
-                                        attributeType="XML"
-                                        type="rotate"
-                                        from="0 12 12"
-                                        to="360 12 12"
-                                        dur="1s"
-                                        repeatCount="indefinite"
-                                    />
-                                </path>
-                            </svg>
-                        </div>
+                <div class="oauth-buttons">
+                    <button type="button" class="oauth-button" id="googleSignIn">
+                        <svg viewBox="0 0 24 24" width="24" height="24">
+                            <path fill="currentColor" d="M12.545,12.151L12.545,12.151c0,1.054,0.855,1.909,1.909,1.909h3.536c-0.607,1.972-2.101,3.467-4.26,3.467c-2.624,0-4.747-2.124-4.747-4.747s2.124-4.747,4.747-4.747c1.112,0,2.084,0.362,2.854,0.98l1.429-1.429c-1.178-1.038-2.697-1.551-4.283-1.551c-3.813,0-6.888,3.075-6.888,6.888s3.075,6.888,6.888,6.888c5.041,0,6.888-4.527,6.888-8.299c0-0.503-0.057-0.875-0.126-1.253h-6.766V12.151z"/>
+                        </svg>
+                        <span>Sign in with Google</span>
                     </button>
+                    <button type="button" class="oauth-button" disabled>
+                        <svg viewBox="0 0 24 24" width="24" height="24">
+                            <path fill="currentColor" d="M12 2C6.477 2 2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.879V14.89h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.989C18.343 21.129 22 16.99 22 12c0-5.523-4.477-10-10-10z"/>
+                        </svg>
+                        <span>Facebook (Coming Soon)</span>
+                    </button>
+                    <button type="button" class="oauth-button" disabled>
+                        <svg viewBox="0 0 24 24" width="24" height="24">
+                            <path fill="currentColor" d="M17.05 20H6.95c-1.632 0-2.95-1.317-2.95-2.95V6.95C4 5.317 5.317 4 6.95 4h10.1c1.632 0 2.95 1.317 2.95 2.95v10.1c0 1.633-1.317 2.95-2.95 2.95zM6.95 5.5c-.798 0-1.45.652-1.45 1.45v10.1c0 .798.652 1.45 1.45 1.45h10.1c.798 0 1.45-.652 1.45-1.45V6.95c0-.798-.652-1.45-1.45-1.45H6.95z"/>
+                        </svg>
+                        <span>Apple (Coming Soon)</span>
+                    </button>
+                </div>
 
-                    <div class="divider">
-                        <span>Or sign in with</span>
-                    </div>
-
-                    <div class="oauth-buttons">
-                        <!-- Placeholder buttons for future OAuth providers -->
-                        <button type="button" class="oauth-button" disabled>
-                            <svg viewBox="0 0 24 24" width="24" height="24">
-                                <path fill="currentColor" d="M12.545,12.151L12.545,12.151c0,1.054,0.855,1.909,1.909,1.909h3.536c-0.607,1.972-2.101,3.467-4.26,3.467c-2.624,0-4.747-2.124-4.747-4.747s2.124-4.747,4.747-4.747c1.112,0,2.084,0.362,2.854,0.98l1.429-1.429c-1.178-1.038-2.697-1.551-4.283-1.551c-3.813,0-6.888,3.075-6.888,6.888s3.075,6.888,6.888,6.888c5.041,0,6.888-4.527,6.888-8.299c0-0.503-0.057-0.875-0.126-1.253h-6.766V12.151z"/>
-                            </svg>
-                            <span>Google (Coming Soon)</span>
-                        </button>
-                        <button type="button" class="oauth-button" disabled>
-                            <svg viewBox="0 0 24 24" width="24" height="24">
-                                <path fill="currentColor" d="M12 2C6.477 2 2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.879V14.89h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.989C18.343 21.129 22 16.99 22 12c0-5.523-4.477-10-10-10z"/>
-                            </svg>
-                            <span>Facebook (Coming Soon)</span>
-                        </button>
-                        <button type="button" class="oauth-button" disabled>
-                            <svg viewBox="0 0 24 24" width="24" height="24">
-                                <path fill="currentColor" d="M12 2C6.477 2 2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.879V14.89h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.989C18.343 21.129 22 16.99 22 12c0-5.523-4.477-10-10-10z"/>
-                            </svg>
-                            <span>Microsoft (Coming Soon)</span>
-                        </button>
-                    </div>
-
-                    <div class="new-user-message">
-                        New to Bennie? <a href="/">Start your journey here</a>
-                    </div>
-                </form>
+                <div class="new-user-message">
+                    New to Bennie? <a href="/">Start your journey here</a>
+                </div>
             </div>
         </div>
     </div>
 
+    <!-- Add Supabase client before our script -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script type="module">
+        import getSupabaseConfig from '/static/js/config.js';
+        
+        // Initialize Supabase client
+        async function initSupabase() {
+            try {
+                const config = await getSupabaseConfig();
+                const supabase = supabase.createClient(config.url, config.anonKey);
+                window.supabase = supabase;
+            } catch (error) {
+                console.error('Failed to initialize Supabase:', error);
+            }
+        }
+
+        initSupabase();
+    </script>
     <script src="/static/js/signin.js"></script>
 </body>
 </html> 

@@ -49,11 +49,36 @@ if not all([SUPABASE_URL, SUPABASE_KEY]):
 try:
     logger.info("Initializing Supabase client...")
     
+    # Configure Supabase Auth SMTP settings
+    smtp_config = {
+        "SMTP_ADMIN_EMAIL": os.getenv("SENDGRID_FROM_EMAIL"),
+        "SMTP_HOST": "smtp.sendgrid.net",
+        "SMTP_PORT": 587,
+        "SMTP_USER": "apikey",  # SendGrid always uses 'apikey' as username
+        "SMTP_PASS": os.getenv("SENDGRID_API_KEY"),
+        "SMTP_SENDER_NAME": "Bennie"
+    }
+    
     # Initialize Supabase client with proper configuration
     supabase: Client = create_client(
         supabase_url=SUPABASE_URL,
         supabase_key=SUPABASE_KEY,
+        options={
+            "auth": {
+                "autoRefreshToken": True,
+                "persistSession": True,
+                "detectSessionInUrl": True
+            }
+        }
     )
+    
+    # Configure SMTP settings
+    auth_config = supabase.auth.update_config({
+        "SITE_URL": "https://itsbennie.com",
+        **smtp_config
+    })
+    
+    logger.info("Supabase client and SMTP configured successfully")
     
     # Test connection with proper error handling
     try:
@@ -577,6 +602,17 @@ async def reset_password(reset_data: dict):
             status_code=500,
             detail="Failed to send password reset email"
         )
+
+@app.get("/api/auth/config")
+async def get_auth_config():
+    """
+    Provide Supabase configuration for client-side authentication.
+    Only returns the public anon key and URL, never the service role key.
+    """
+    return {
+        "supabaseUrl": os.getenv("SUPABASE_URL"),
+        "supabaseKey": os.getenv("SUPABASE_KEY")
+    }
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))
