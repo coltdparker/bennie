@@ -48,14 +48,10 @@ if not all([SUPABASE_URL, SUPABASE_KEY]):
 try:
     logger.info("Initializing Supabase client...")
     
-    # Single client with service role key and proper headers
+    # Initialize single client with service role key
     supabase: Client = create_client(
         SUPABASE_URL,
-        SUPABASE_KEY,
-        headers={
-            "apiKey": SUPABASE_KEY,
-            "Authorization": f"Bearer {SUPABASE_KEY}"
-        }
+        SUPABASE_KEY
     )
     logger.info("Supabase client initialized successfully")
     
