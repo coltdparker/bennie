@@ -255,7 +255,12 @@
         async function initSupabase() {
             try {
                 const config = await getSupabaseConfig();
-                const supabase = supabase.createClient(config.url, config.anonKey);
+                const supabase = supabase.createClient(config.url, config.anonKey, {
+                    auth: {
+                        autoRefreshToken: true,
+                        persistSession: true
+                    }
+                });
                 window.supabase = supabase;
             } catch (error) {
                 console.error('Failed to initialize Supabase:', error);
