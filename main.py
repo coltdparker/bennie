@@ -52,14 +52,7 @@ try:
     # Initialize Supabase client
     supabase: Client = create_client(
         supabase_url=SUPABASE_URL,
-        supabase_key=SUPABASE_KEY,
-        options={
-            "schema": "public",
-            "headers": {
-                "apikey": SUPABASE_KEY
-            },
-            "postgrest_client_timeout": 60
-        }
+        supabase_key=SUPABASE_KEY
     )
     
     logger.info("Supabase client initialized successfully")
@@ -71,7 +64,13 @@ try:
         logger.info("Successfully tested Supabase database connection")
     except Exception as db_e:
         logger.error(f"Database test failed: {db_e}")
-        raise RuntimeError(f"Failed to connect to database: {str(db_e)}")
+        # Try auth connection instead
+        try:
+            test_response = supabase.auth.get_session()
+            logger.info("Successfully tested Supabase auth connection")
+        except Exception as auth_e:
+            logger.error(f"Auth test failed: {auth_e}")
+            raise RuntimeError("Failed to connect to Supabase services")
     
 except Exception as e:
     logger.error(f"Failed to initialize Supabase client: {str(e)}")

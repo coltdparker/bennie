@@ -255,18 +255,17 @@
         async function initSupabase() {
             try {
                 const config = await getSupabaseConfig();
-                const supabase = supabase.createClient(config.url, config.anonKey, {
-                    db: {
-                        schema: 'public'
-                    },
-                    global: {
-                        headers: {
-                            apikey: config.anonKey
-                        }
-                    }
-                });
+                const supabase = supabase.createClient(config.url, config.anonKey);
                 window.supabase = supabase;
-                console.log('Supabase client initialized successfully');
+                
+                // Test the connection
+                try {
+                    await supabase.auth.getSession();
+                    console.log('Supabase client initialized and connected successfully');
+                } catch (connError) {
+                    console.error('Failed to connect to Supabase:', connError);
+                    throw connError;
+                }
             } catch (error) {
                 console.error('Failed to initialize Supabase:', error);
                 // Show error to user
