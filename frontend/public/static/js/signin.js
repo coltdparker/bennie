@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const passwordInput = document.getElementById('password');
     const signinButton = document.getElementById('signinButton');
     const emailError = document.getElementById('emailError');
+    const forgotPasswordLink = document.getElementById('forgotPasswordLink');
 
     // Helper function to show error message
     const showError = (message) => {
@@ -30,6 +31,50 @@ document.addEventListener('DOMContentLoaded', () => {
             spinner.style.display = isLoading ? 'inline-block' : 'none';
         }
     };
+
+    // Handle forgot password
+    forgotPasswordLink.addEventListener('click', async (e) => {
+        e.preventDefault();
+        
+        const email = emailInput.value.trim();
+        if (!email) {
+            showError('Please enter your email address first');
+            return;
+        }
+
+        if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+            showError('Please enter a valid email address');
+            return;
+        }
+
+        try {
+            setLoading(true);
+            
+            const response = await fetch('/api/auth/reset-password', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.detail || 'Failed to send reset email');
+            }
+
+            // Show success message
+            emailError.textContent = 'Password reset email sent. Please check your inbox.';
+            emailError.style.color = 'var(--success-green)';
+            emailError.style.display = 'block';
+
+        } catch (error) {
+            showError(error.message || 'Failed to send reset email');
+        } finally {
+            setLoading(false);
+        }
+    });
 
     // Handle form submission
     form.addEventListener('submit', async (e) => {

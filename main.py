@@ -543,6 +543,41 @@ async def sendgrid_inbound(request: Request, secret: Optional[str] = Query(None)
         logger.error(f"Error processing inbound email: {e}")
         return {"success": False, "error": str(e)}
 
+@app.post("/api/auth/reset-password")
+async def reset_password(reset_data: dict):
+    """
+    Send a password reset email to the user.
+    
+    Args:
+        reset_data: Dict containing email
+        
+    Returns:
+        dict: Success response
+    """
+    try:
+        email = reset_data.get("email", "").lower()
+        if not email:
+            raise HTTPException(status_code=400, detail="Email is required")
+            
+        logger.info(f"[PASSWORD RESET] Sending reset email to: {email}")
+        
+        # Send password reset email
+        auth_response = supabase.auth.reset_password_email(email)
+        
+        logger.info(f"[PASSWORD RESET] Reset email sent successfully to: {email}")
+        
+        return {
+            "success": True,
+            "message": "Password reset instructions sent to your email"
+        }
+        
+    except Exception as e:
+        logger.error(f"[PASSWORD RESET] Error sending reset email: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to send password reset email"
+        )
+
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))
     logger.info(f"Starting server on port {port}")
