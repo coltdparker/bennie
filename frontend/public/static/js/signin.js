@@ -15,6 +15,65 @@ async function initializeSupabase() {
     }
 }
 
+async function handleAuthCallback() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('code');
+    const error = urlParams.get('error');
+    const errorDescription = urlParams.get('error_description');
+    
+    if (error) {
+        console.error('OAuth error in URL:', { error, description: errorDescription });
+        showError(errorDescription || error);
+        // Clean up URL
+        window.history.replaceState({}, document.title, '/signin');
+        return;
+    }
+    
+    if (code) {
+        console.log('Found authorization code, creating session...');
+        try {
+            // Exchange the code for a session
+            const { data, error: sessionError } = await supabaseClient.auth.exchangeCodeForSession(code);
+            
+            if (sessionError) {
+                console.error('Session creation error:', sessionError);
+                throw sessionError;
+            }
+            
+            if (data.session) {
+                console.log('Session created successfully, redirecting to profile...');
+                window.location.href = '/profile';
+                return;
+            } else {
+                throw new Error('No session created');
+            }
+        } catch (error) {
+            console.error('Error creating session from code:', error);
+            showError('Failed to complete sign-in. Please try again.');
+            // Clean up URL
+            window.history.replaceState({}, document.title, '/signin');
+        }
+    }
+}
+
+function showError(message) {
+    // Create or find error display element
+    let errorDisplay = document.querySelector('.error-message');
+    if (!errorDisplay) {
+        errorDisplay = document.createElement('div');
+        errorDisplay.className = 'error-message';
+        errorDisplay.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
+        errorDisplay.style.color = 'var(--error-red)';
+        errorDisplay.style.padding = '10px';
+        errorDisplay.style.borderRadius = '5px';
+        errorDisplay.style.marginTop = '10px';
+        document.querySelector('.oauth-buttons').after(errorDisplay);
+    }
+    
+    errorDisplay.textContent = message;
+    errorDisplay.style.display = 'block';
+}
+
 async function setupGoogleSignIn() {
     const googleSignInButton = document.getElementById('googleSignIn');
     if (!googleSignInButton) {
@@ -22,22 +81,12 @@ async function setupGoogleSignIn() {
         return;
     }
 
-    const errorDisplay = document.createElement('div');
-    errorDisplay.className = 'error-message';
-    document.querySelector('.oauth-buttons').after(errorDisplay);
-
-    // Helper function to show error message
-    const showError = (message, isWarning = false) => {
-        console.error('Error:', message);
-        errorDisplay.textContent = message;
-        errorDisplay.style.display = 'block';
-        errorDisplay.style.backgroundColor = isWarning ? 'rgba(251, 191, 36, 0.1)' : 'rgba(239, 68, 68, 0.1)';
-        errorDisplay.style.color = isWarning ? '#D97706' : 'var(--error-red)';
-    };
-
     // Helper function to hide error message
     const hideError = () => {
-        errorDisplay.style.display = 'none';
+        const errorDisplay = document.querySelector('.error-message');
+        if (errorDisplay) {
+            errorDisplay.style.display = 'none';
+        }
     };
 
     // Helper function to set loading state
@@ -60,10 +109,6 @@ async function setupGoogleSignIn() {
             if (!supabaseClient) {
                 throw new Error('Supabase client not initialized');
             }
-
-            // Generate and store state parameter
-            const state = btoa(crypto.randomUUID());
-            sessionStorage.setItem('oauth_state', state);
 
             console.log('Initiating Google sign-in...');
             const { data, error } = await supabaseClient.auth.signInWithOAuth({
@@ -94,7 +139,7 @@ async function setupGoogleSignIn() {
             
             // Handle specific error cases
             if (error.message?.includes('popup_closed_by_user')) {
-                showError('Sign-in was cancelled. Please try again.', true);
+                showError('Sign-in was cancelled. Please try again.');
             } else if (error.message?.includes('configuration')) {
                 showError('Authentication service is not properly configured. Please try again later.');
             } else if (error.message?.includes('network')) {
@@ -118,23 +163,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log('Setting up Google Sign In...');
         await setupGoogleSignIn();
         
-        // Check for error in URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const error = urlParams.get('error');
-        const errorDescription = urlParams.get('error_description');
+        // Handle OAuth callback if code is present
+        await handleAuthCallback();
         
-        if (error) {
-            console.error('OAuth error in URL:', { error, description: errorDescription });
-            const errorDisplay = document.createElement('div');
-            errorDisplay.className = 'error-message';
-            errorDisplay.textContent = errorDescription || error;
-            document.querySelector('.oauth-buttons').after(errorDisplay);
-        }
     } catch (error) {
         console.error('Initialization error:', error);
-        const errorDisplay = document.createElement('div');
-        errorDisplay.className = 'error-message';
-        errorDisplay.textContent = 'Failed to initialize authentication. Please try again later.';
-        document.querySelector('.oauth-buttons').after(errorDisplay);
+        showError('Failed to initialize authentication. Please try again later.');
     }
 }); 

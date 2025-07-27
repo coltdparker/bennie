@@ -154,32 +154,22 @@ async def auth_callback(request: Request):
                 status_code=302
             )
 
-        # Create Supabase client
-        supabase = await createClient()
-        logger.info("Exchanging code for session")
+        logger.info(f"Found authorization code: {code[:10]}...")
         
         try:
-            # Exchange the code for a session
-            result = await supabase.auth.exchange_code_for_session(code)
-            logger.info("Successfully exchanged code for session")
+            # Use the global supabase client that's already initialized
+            # The Python client handles OAuth differently - we don't need to exchange the code
+            # on the backend. Instead, we redirect to the frontend with the code and let
+            # the client-side handle the session creation.
             
-            # Check if we got a session
-            if not result.session:
-                logger.error("No session in exchange result")
-                return RedirectResponse(
-                    url="/signin?error=no_session",
-                    status_code=302
-                )
-                
-            # Redirect to profile page
-            logger.info("Redirecting to profile page")
+            logger.info("Redirecting to signin page with authorization code")
             return RedirectResponse(
-                url="/profile",
+                url=f"/signin?code={code}",
                 status_code=302
             )
             
         except Exception as e:
-            logger.error(f"Error exchanging code: {str(e)}")
+            logger.error(f"Error processing code: {str(e)}")
             return RedirectResponse(
                 url=f"/signin?error=exchange_failed&error_description={str(e)}",
                 status_code=302
