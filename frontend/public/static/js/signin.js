@@ -11,29 +11,28 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelector('.oauth-buttons').after(errorDisplay);
 
     // Helper function to show error message
-    const showError = (message) => {
-        console.error('Error displaying:', message);
-        emailError.textContent = message;
-        emailError.style.display = 'block';
+    const showError = (message, isWarning = false) => {
+        console.error('Error:', message);
+        errorDisplay.textContent = message;
+        errorDisplay.style.display = 'block';
+        errorDisplay.style.backgroundColor = isWarning ? 'rgba(251, 191, 36, 0.1)' : 'rgba(239, 68, 68, 0.1)';
+        errorDisplay.style.color = isWarning ? '#D97706' : 'var(--error-red)';
     };
 
     // Helper function to hide error message
     const hideError = () => {
-        console.log('Clearing error display');
-        emailError.style.display = 'none';
+        errorDisplay.style.display = 'none';
     };
 
     // Helper function to set loading state
     const setLoading = (isLoading) => {
-        console.log('Setting loading state:', isLoading);
-        signinButton.disabled = isLoading;
-        signinButton.querySelector('span').textContent = isLoading ? 'Signing in...' : 'Sign In';
-        
-        // Toggle loading spinner
-        const spinner = signinButton.querySelector('.spinner');
-        if (spinner) {
-            spinner.style.display = isLoading ? 'inline-block' : 'none';
-        }
+        const buttons = document.querySelectorAll('.oauth-button:not([disabled])');
+        buttons.forEach(button => {
+            button.disabled = isLoading;
+            if (button.id === 'googleSignIn') {
+                button.querySelector('span').textContent = isLoading ? 'Signing in...' : 'Sign in with Google';
+            }
+        });
     };
 
     // Handle forgot password
@@ -86,11 +85,20 @@ document.addEventListener('DOMContentLoaded', () => {
             hideError();
             setLoading(true);
 
-            // Initialize Supabase client (make sure supabase-js is included in your HTML)
+            // Generate and store state parameter
+            const state = btoa(crypto.randomUUID());
+            sessionStorage.setItem('oauth_state', state);
+
+            // Initialize Supabase client
             const { data, error } = await window.supabase.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
-                    redirectTo: `${window.location.origin}/profile`
+                    redirectTo: `${window.location.origin}/profile`,
+                    queryParams: {
+                        state: state,
+                        access_type: 'offline',
+                        prompt: 'consent'
+                    }
                 }
             });
 
@@ -101,8 +109,59 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch (error) {
             console.error('Google sign-in error:', error);
-            showError('Failed to initialize Google sign-in. Please try again.');
+            
+            // Handle specific error cases
+            if (error.message?.includes('popup_closed_by_user')) {
+                showError('Sign-in was cancelled. Please try again.', true);
+            } else if (error.message?.includes('configuration')) {
+                showError('Authentication service is not properly configured. Please try again later.');
+            } else if (error.message?.includes('network')) {
+                showError('Network error. Please check your internet connection and try again.');
+            } else {
+                showError('Failed to initialize sign-in. Please try again.');
+            }
+            
             setLoading(false);
+        }
+    });
+
+    // Handle OAuth redirect result
+    window.addEventListener('load', async () => {
+        try {
+            const hash = window.location.hash;
+            if (!hash) return;
+
+            // Check for error in redirect
+            const errorParam = new URLSearchParams(hash.substring(1)).get('error');
+            if (errorParam) {
+                showError(`Authentication failed: ${errorParam}`);
+                return;
+            }
+
+            // Verify state parameter
+            const state = new URLSearchParams(hash.substring(1)).get('state');
+            const storedState = sessionStorage.getItem('oauth_state');
+            
+            if (state !== storedState) {
+                showError('Invalid authentication state. Please try again.');
+                return;
+            }
+
+            // Clear stored state
+            sessionStorage.removeItem('oauth_state');
+
+            // Handle the redirect result
+            const { data: { session }, error } = await window.supabase.auth.getSession();
+            
+            if (error) throw error;
+            if (!session) throw new Error('Failed to establish session');
+
+            // Redirect to profile
+            window.location.href = '/profile';
+
+        } catch (error) {
+            console.error('OAuth redirect error:', error);
+            showError('Failed to complete sign-in. Please try again.');
         }
     });
 

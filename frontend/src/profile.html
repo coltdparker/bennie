@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile - Bennie</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .profile-container {
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+
+        .profile-header {
+            margin-bottom: 40px;
+            text-align: center;
+        }
+
+        .profile-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 36px;
+            color: var(--bittersweet);
+            margin-bottom: 10px;
+        }
+
+        .profile-subtitle {
+            color: var(--text-secondary);
+            font-size: 18px;
+        }
+
+        .profile-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+
+        .profile-card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-light);
+        }
+
+        .card-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 24px;
+            color: var(--night);
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--border-light);
+        }
+
+        .info-group {
+            margin-bottom: 20px;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .info-value {
+            color: var(--text-primary);
+            font-size: 16px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-secondary);
+        }
+
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--error-red);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        @media (max-width: 768px) {
+            .profile-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="profile-container">
+        <div class="profile-header">
+            <h1 class="profile-title">Your Profile</h1>
+            <p class="profile-subtitle">Track your language learning journey</p>
+        </div>
+
+        <div id="loading" class="loading">
+            Loading your profile...
+        </div>
+
+        <div id="error" class="error-message" style="display: none;">
+        </div>
+
+        <div id="profile-content" style="display: none;">
+            <div class="profile-grid">
+                <!-- User Overview -->
+                <div class="profile-card">
+                    <h2 class="card-title">User Overview</h2>
+                    <div class="info-group">
+                        <div class="info-label">Name</div>
+                        <div class="info-value" id="user-name">-</div>
+                    </div>
+                    <div class="info-group">
+                        <div class="info-label">Email</div>
+                        <div class="info-value" id="user-email">-</div>
+                    </div>
+                    <div class="info-group">
+                        <div class="info-label">Current Level</div>
+                        <div class="info-value" id="user-level">-</div>
+                    </div>
+                </div>
+
+                <!-- Language Learning Details -->
+                <div class="profile-card">
+                    <h2 class="card-title">Learning Details</h2>
+                    <div class="info-group">
+                        <div class="info-label">Target Proficiency</div>
+                        <div class="info-value" id="target-proficiency">-</div>
+                    </div>
+                    <div class="info-group">
+                        <div class="info-label">Current Skill Rating</div>
+                        <div class="info-value" id="skill-rating">-</div>
+                    </div>
+                </div>
+
+                <!-- Preferences -->
+                <div class="profile-card">
+                    <h2 class="card-title">Preferences</h2>
+                    <div class="info-group">
+                        <div class="info-label">Motivation</div>
+                        <div class="info-value" id="user-motivation">-</div>
+                    </div>
+                    <div class="info-group">
+                        <div class="info-label">Interests</div>
+                        <div class="info-value" id="user-interests">-</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Supabase client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script type="module" src="/static/js/profile.js"></script>
+</body>
+</html> 
