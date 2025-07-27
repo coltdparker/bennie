@@ -35,24 +35,24 @@ load_dotenv()
 
 # Environment variables
 SUPABASE_URL: str = os.getenv("SUPABASE_URL")
-SUPABASE_KEY: str = os.getenv("SUPABASE_KEY")  # Service role key
+SUPABASE_ANON_KEY: str = os.getenv("SUPABASE_ANON_KEY")  # Anon key for client auth
 
 # Debug: Print environment variables (mask keys)
 logger.info(f"SUPABASE_URL configured: {bool(SUPABASE_URL)}")
-logger.info(f"SUPABASE_KEY configured: {bool(SUPABASE_KEY)}")
+logger.info(f"SUPABASE_ANON_KEY configured: {bool(SUPABASE_ANON_KEY)}")
 
-if not all([SUPABASE_URL, SUPABASE_KEY]):
+if not all([SUPABASE_URL, SUPABASE_ANON_KEY]):
     logger.error("Missing required environment variables")
     raise ValueError("Missing required environment variables")
 
-# Initialize Supabase client with service role key
+# Initialize Supabase client with anon key
 try:
     logger.info("Initializing Supabase client...")
     
     # Initialize Supabase client
     supabase: Client = create_client(
         supabase_url=SUPABASE_URL,
-        supabase_key=SUPABASE_KEY
+        supabase_key=SUPABASE_ANON_KEY
     )
     
     logger.info("Supabase client initialized successfully")
@@ -591,17 +591,8 @@ async def get_auth_config():
     Provide Supabase configuration for client-side authentication.
     Only returns the public anon key and URL, never the service role key.
     """
-    # Get the anon key from environment
-    SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
-    if not SUPABASE_ANON_KEY:
-        logger.error("Missing SUPABASE_ANON_KEY environment variable")
-        raise HTTPException(
-            status_code=500,
-            detail="Server configuration error"
-        )
-    
     return {
-        "supabaseUrl": os.getenv("SUPABASE_URL"),
+        "supabaseUrl": SUPABASE_URL,
         "supabaseKey": SUPABASE_ANON_KEY  # Use anon key for client-side auth
     }
 
