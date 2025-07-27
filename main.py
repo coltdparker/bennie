@@ -10,7 +10,7 @@ import logging
 import secrets
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Request, Header, Query, status
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import uvicorn
@@ -136,6 +136,31 @@ async def read_onboard():
 async def read_signin():
     """Serve the sign-in page."""
     return FileResponse("frontend/src/signin.html")
+
+@app.get("/auth/callback")
+async def auth_callback(request: Request):
+    """Handle OAuth callback and redirect to appropriate page."""
+    logger.info("Received OAuth callback")
+    
+    # Log query parameters for debugging
+    params = dict(request.query_params)
+    logger.info(f"Callback params: {params}")
+    
+    # Check for error
+    if 'error' in params:
+        logger.error(f"OAuth error: {params.get('error')}")
+        logger.error(f"Error description: {params.get('error_description')}")
+        return RedirectResponse(url=f"/signin#error={params['error']}&error_description={params.get('error_description', '')}")
+    
+    # Check for required parameters
+    if 'state' not in params:
+        logger.error("Missing state parameter in callback")
+        return RedirectResponse(url="/signin#error=invalid_callback&error_description=Missing state parameter")
+    
+    # Redirect to signin page with hash parameters for client-side handling
+    hash_params = "&".join(f"{k}={v}" for k, v in params.items())
+    logger.info(f"Redirecting to signin with params: {hash_params}")
+    return RedirectResponse(url=f"/signin#{hash_params}")
 
 @app.get("/profile")
 async def read_profile():
@@ -596,10 +621,24 @@ async def get_auth_config():
     Provide Supabase configuration for client-side authentication.
     Only returns the public anon key and URL, never the service role key.
     """
-    return {
+    logger.info("Auth config requested")
+    logger.info(f"SUPABASE_URL configured: {bool(SUPABASE_URL)}")
+    logger.info(f"SUPABASE_ANON_KEY configured: {bool(SUPABASE_ANON_KEY)}")
+    
+    if not SUPABASE_URL or not SUPABASE_ANON_KEY:
+        logger.error("Missing required Supabase configuration")
+        raise HTTPException(
+            status_code=500,
+            detail="Authentication service configuration error"
+        )
+    
+    config = {
         "supabaseUrl": SUPABASE_URL,
-        "supabaseKey": SUPABASE_ANON_KEY  # Use anon key for client-side auth
+        "supabaseKey": SUPABASE_ANON_KEY
     }
+    
+    logger.info("Auth config provided successfully")
+    return config
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))

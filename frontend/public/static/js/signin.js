@@ -3,31 +3,54 @@ import getSupabaseConfig from './config.js';
 
 let supabaseClient = null;
 
+// Debug logging helper
+function debugLog(section, message, data = null) {
+    const logMessage = `[${section}] ${message}`;
+    if (data) {
+        console.log(logMessage, data);
+    } else {
+        console.log(logMessage);
+    }
+}
+
 async function initializeSupabase() {
     try {
+        debugLog('Supabase Init', 'Starting Supabase initialization...');
         const config = await getSupabaseConfig();
-        console.log('Supabase config loaded:', { url: config.url, hasKey: !!config.anonKey });
+        debugLog('Supabase Config', 'Configuration loaded:', {
+            hasUrl: !!config.url,
+            hasKey: !!config.anonKey,
+            urlDomain: config.url ? new URL(config.url).hostname : null
+        });
+
         supabaseClient = createClient(config.url, config.anonKey);
+        debugLog('Supabase Client', 'Client created successfully');
         
         // Check if we already have a session
         const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+        debugLog('Session Check', 'Current session state:', {
+            hasSession: !!session,
+            error: sessionError
+        });
+
         if (session) {
-            console.log('Existing session found, redirecting to profile...');
+            debugLog('Session', 'Existing session found, redirecting to profile...');
             window.location.href = '/profile';
             return;
         }
         
         return supabaseClient;
     } catch (error) {
-        console.error('Failed to initialize Supabase:', error);
+        debugLog('Supabase Init Error', 'Failed to initialize:', error);
         throw error;
     }
 }
 
 async function setupGoogleSignIn() {
+    debugLog('Google Setup', 'Setting up Google Sign In...');
     const googleSignInButton = document.getElementById('googleSignIn');
     if (!googleSignInButton) {
-        console.error('Google sign-in button not found');
+        debugLog('Google Setup Error', 'Google sign-in button not found in DOM');
         return;
     }
 
@@ -37,7 +60,7 @@ async function setupGoogleSignIn() {
 
     // Helper function to show error message
     const showError = (message, isWarning = false) => {
-        console.error('Error:', message);
+        debugLog('Error Display', `Showing ${isWarning ? 'warning' : 'error'}: ${message}`);
         errorDisplay.textContent = message;
         errorDisplay.style.display = 'block';
         errorDisplay.style.backgroundColor = isWarning ? 'rgba(251, 191, 36, 0.1)' : 'rgba(239, 68, 68, 0.1)';
@@ -46,11 +69,13 @@ async function setupGoogleSignIn() {
 
     // Helper function to hide error message
     const hideError = () => {
+        debugLog('Error Display', 'Hiding error message');
         errorDisplay.style.display = 'none';
     };
 
     // Helper function to set loading state
     const setLoading = (isLoading) => {
+        debugLog('UI State', `Setting loading state: ${isLoading}`);
         const buttons = document.querySelectorAll('.oauth-button:not([disabled])');
         buttons.forEach(button => {
             button.disabled = isLoading;
@@ -63,6 +88,7 @@ async function setupGoogleSignIn() {
     // Handle Google Sign In
     googleSignInButton.addEventListener('click', async () => {
         try {
+            debugLog('Google Auth', 'Starting Google sign-in process...');
             hideError();
             setLoading(true);
 
@@ -73,11 +99,13 @@ async function setupGoogleSignIn() {
             // Generate and store state parameter
             const state = btoa(crypto.randomUUID());
             sessionStorage.setItem('oauth_state', state);
+            debugLog('OAuth State', 'Generated state parameter:', { state });
 
             // Get the current URL for the redirect
-            const redirectUrl = new URL('/profile', window.location.origin).href;
-            console.log('Initiating Google sign-in with redirect URL:', redirectUrl);
+            const redirectUrl = `${window.location.origin}/auth/callback`;
+            debugLog('OAuth Config', 'Configured redirect URL:', { redirectUrl });
 
+            debugLog('Supabase Auth', 'Calling signInWithOAuth...');
             const { data, error } = await supabaseClient.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
@@ -91,14 +119,14 @@ async function setupGoogleSignIn() {
             });
 
             if (error) {
-                console.error('OAuth error:', error);
+                debugLog('OAuth Error', 'Error during OAuth initialization:', error);
                 throw error;
             }
 
-            console.log('Sign-in initiated:', data);
+            debugLog('OAuth Success', 'Sign-in initiated successfully:', data);
 
         } catch (error) {
-            console.error('Google sign-in error:', error);
+            debugLog('OAuth Error', 'Failed to complete OAuth flow:', error);
             
             // Handle specific error cases
             if (error.message?.includes('popup_closed_by_user')) {
@@ -116,15 +144,20 @@ async function setupGoogleSignIn() {
             setLoading(false);
         }
     });
+
+    debugLog('Google Setup', 'Google Sign In setup completed');
 }
 
 // Handle OAuth redirect result
 async function handleRedirect() {
     const hash = window.location.hash;
-    if (!hash) return;
+    if (!hash) {
+        debugLog('Redirect', 'No hash parameters found');
+        return;
+    }
 
     try {
-        console.log('Processing OAuth redirect...');
+        debugLog('Redirect', 'Processing OAuth redirect with hash:', hash);
         
         // Check for error in redirect
         const params = new URLSearchParams(hash.substring(1));
@@ -132,40 +165,49 @@ async function handleRedirect() {
         const errorDescription = params.get('error_description');
         
         if (errorParam) {
-            console.error('OAuth redirect error:', errorParam, errorDescription);
+            debugLog('Redirect Error', 'Error in OAuth redirect:', {
+                error: errorParam,
+                description: errorDescription
+            });
             throw new Error(errorDescription || errorParam);
         }
 
         // Verify state parameter
         const state = params.get('state');
         const storedState = sessionStorage.getItem('oauth_state');
+        debugLog('State Verification', 'Checking state parameter:', {
+            received: state,
+            stored: storedState,
+            matches: state === storedState
+        });
         
         if (state !== storedState) {
-            console.error('State mismatch:', { received: state, stored: storedState });
             throw new Error('Invalid authentication state. Please try again.');
         }
 
         // Clear stored state
         sessionStorage.removeItem('oauth_state');
+        debugLog('State Cleanup', 'Cleared stored state');
 
         // Get the session
+        debugLog('Session', 'Fetching session...');
         const { data: { session }, error } = await supabaseClient.auth.getSession();
         
         if (error) {
-            console.error('Session error:', error);
+            debugLog('Session Error', 'Failed to get session:', error);
             throw error;
         }
         
         if (!session) {
-            console.error('No session established');
+            debugLog('Session Error', 'No session established');
             throw new Error('Failed to establish session');
         }
 
-        console.log('Authentication successful, redirecting to profile...');
+        debugLog('Auth Success', 'Authentication successful, redirecting to profile...');
         window.location.href = '/profile';
 
     } catch (error) {
-        console.error('OAuth redirect error:', error);
+        debugLog('Redirect Error', 'Failed to handle redirect:', error);
         const errorDisplay = document.createElement('div');
         errorDisplay.className = 'error-message';
         errorDisplay.textContent = `Authentication failed: ${error.message}`;
@@ -175,16 +217,14 @@ async function handleRedirect() {
 
 // Initialize everything when DOM is ready
 document.addEventListener('DOMContentLoaded', async () => {
+    debugLog('Init', 'Starting application initialization...');
     try {
-        console.log('Initializing Supabase...');
         await initializeSupabase();
-        console.log('Setting up Google Sign In...');
         await setupGoogleSignIn();
-        
-        // Handle any redirect result
         await handleRedirect();
+        debugLog('Init', 'Application initialization completed');
     } catch (error) {
-        console.error('Initialization error:', error);
+        debugLog('Init Error', 'Failed to initialize application:', error);
         const errorDisplay = document.createElement('div');
         errorDisplay.className = 'error-message';
         errorDisplay.textContent = 'Failed to initialize authentication. Please try again later.';
