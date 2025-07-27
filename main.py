@@ -145,6 +145,13 @@ async def auth_callback(request: Request):
     logger.info(f"Query params: {request.query_params}")
     
     try:
+        if not SUPABASE_URL:
+            logger.error("SUPABASE_URL environment variable is not set")
+            return RedirectResponse(
+                url="/signin#error=configuration_error&error_description=Missing Supabase configuration",
+                status_code=302
+            )
+
         # Get the Supabase callback URL
         supabase_callback = f"{SUPABASE_URL}/auth/v1/callback"
         logger.info(f"Supabase callback URL: {supabase_callback}")

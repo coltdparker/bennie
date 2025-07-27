@@ -1,8 +1,7 @@
 // Supabase configuration
 async function getSupabaseConfig() {
-    console.log('[Config] Starting to fetch Supabase configuration...');
     try {
-        console.log('[Config] Making request to /api/auth/config');
+        console.log('[Config] Starting to fetch Supabase configuration...');
         const response = await fetch('/api/auth/config');
         console.log('[Config] Response status:', response.status);
         
@@ -11,6 +10,11 @@ async function getSupabaseConfig() {
         }
         
         const config = await response.json();
+        
+        if (!config.supabaseUrl || !config.supabaseKey) {
+            throw new Error('Invalid configuration: Missing Supabase URL or key');
+        }
+        
         console.log('[Config] Configuration loaded successfully:', {
             hasUrl: !!config.supabaseUrl,
             hasKey: !!config.supabaseKey,

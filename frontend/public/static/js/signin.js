@@ -102,10 +102,8 @@ async function setupGoogleSignIn() {
             debugLog('OAuth State', 'Generated state parameter:', { state });
 
             // Get the current URL for the redirect
-            const supabaseCallbackUrl = `${SUPABASE_URL}/auth/v1/callback`;
             const appCallbackUrl = `${window.location.origin}/auth/callback`;
-            debugLog('OAuth Config', 'Configured redirect URLs:', { 
-                supabaseCallback: supabaseCallbackUrl,
+            debugLog('OAuth Config', 'Configured redirect URL:', { 
                 appCallback: appCallbackUrl
             });
 
