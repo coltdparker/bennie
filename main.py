@@ -145,33 +145,42 @@ async def auth_callback(request: Request):
     logger.info(f"Query params: {request.query_params}")
     
     try:
-        if not SUPABASE_URL:
-            logger.error("SUPABASE_URL environment variable is not set")
+        # Get the code from the query parameters
+        code = request.query_params.get('code')
+        if not code:
+            logger.error("No code parameter in callback")
             return RedirectResponse(
-                url="/signin#error=configuration_error&error_description=Missing Supabase configuration",
+                url="/signin#error=missing_code",
                 status_code=302
             )
 
-        # Get the Supabase callback URL
-        supabase_callback = f"{SUPABASE_URL}/auth/v1/callback"
-        logger.info(f"Supabase callback URL: {supabase_callback}")
+        # Exchange the code for a session
+        supabase = await createClient()
+        logger.info("Exchanging code for session")
         
-        # Forward all query parameters to Supabase
-        query_string = request.url.query
-        redirect_url = f"{supabase_callback}?{query_string}"
-        logger.info(f"Redirecting to: {redirect_url}")
+        # Exchange the code for a session
+        result = await supabase.auth.exchange_code_for_session(code)
+        if result.error:
+            logger.error(f"Error exchanging code: {result.error}")
+            return RedirectResponse(
+                url=f"/signin#error=exchange_failed&message={result.error.message}",
+                status_code=302
+            )
+            
+        logger.info("Successfully exchanged code for session")
         
-        # Use 307 to preserve the request method and body
+        # Redirect to profile page
         return RedirectResponse(
-            url=redirect_url,
-            status_code=307
+            url="/profile",
+            status_code=302
         )
         
     except Exception as e:
         logger.error(f"Error in callback handler: {str(e)}")
-        error_redirect = f"/signin#error=callback_error&error_description={str(e)}"
-        logger.info(f"Error redirect to: {error_redirect}")
-        return RedirectResponse(url=error_redirect)
+        return RedirectResponse(
+            url=f"/signin#error=callback_error&message={str(e)}",
+            status_code=302
+        )
 
 @app.get("/profile")
 async def read_profile():
