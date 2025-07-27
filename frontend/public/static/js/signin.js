@@ -102,21 +102,24 @@ async function setupGoogleSignIn() {
             debugLog('OAuth State', 'Generated state parameter:', { state });
 
             // Get the current URL for the redirect
-            const supabaseCallbackUrl = `${window.location.origin}/auth/callback`;
-            debugLog('OAuth Config', 'Configured redirect URL:', { supabaseCallbackUrl });
+            const supabaseCallbackUrl = `${SUPABASE_URL}/auth/v1/callback`;
+            const appCallbackUrl = `${window.location.origin}/auth/callback`;
+            debugLog('OAuth Config', 'Configured redirect URLs:', { 
+                supabaseCallback: supabaseCallbackUrl,
+                appCallback: appCallbackUrl
+            });
 
             debugLog('Supabase Auth', 'Calling signInWithOAuth...');
             const { data, error } = await supabaseClient.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
-                    redirectTo: supabaseCallbackUrl,
+                    redirectTo: appCallbackUrl,
                     queryParams: {
                         state: state,
                         access_type: 'offline',
-                        prompt: 'consent',
-                        hd: 'gmail.com' // Optional: restrict to Gmail domains
+                        prompt: 'consent'
                     },
-                    skipBrowserRedirect: false // Ensure browser handles redirect
+                    skipBrowserRedirect: false
                 }
             });
 

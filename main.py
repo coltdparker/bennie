@@ -141,32 +141,30 @@ async def read_signin():
 async def auth_callback(request: Request):
     """Handle OAuth callback and redirect to appropriate page."""
     logger.info("Received OAuth callback")
-    
-    # Log query parameters for debugging
-    params = dict(request.query_params)
-    logger.info(f"Callback params: {params}")
+    logger.info(f"Request URL: {request.url}")
+    logger.info(f"Query params: {request.query_params}")
     
     try:
         # Get the Supabase callback URL
         supabase_callback = f"{SUPABASE_URL}/auth/v1/callback"
-        logger.info(f"Redirecting to Supabase callback: {supabase_callback}")
+        logger.info(f"Supabase callback URL: {supabase_callback}")
         
         # Forward all query parameters to Supabase
         query_string = request.url.query
         redirect_url = f"{supabase_callback}?{query_string}"
+        logger.info(f"Redirecting to: {redirect_url}")
         
-        # Redirect to Supabase for auth handling
+        # Use 307 to preserve the request method and body
         return RedirectResponse(
             url=redirect_url,
-            status_code=307  # Temporary redirect, preserving HTTP method
+            status_code=307
         )
         
     except Exception as e:
-        logger.error(f"Error in callback handler: {e}")
-        return RedirectResponse(
-            url=f"/signin#error=callback_error&error_description={str(e)}",
-            status_code=302
-        )
+        logger.error(f"Error in callback handler: {str(e)}")
+        error_redirect = f"/signin#error=callback_error&error_description={str(e)}"
+        logger.info(f"Error redirect to: {error_redirect}")
+        return RedirectResponse(url=error_redirect)
 
 @app.get("/profile")
 async def read_profile():
