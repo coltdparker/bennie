@@ -146,21 +146,27 @@ async def auth_callback(request: Request):
     params = dict(request.query_params)
     logger.info(f"Callback params: {params}")
     
-    # Check for error
-    if 'error' in params:
-        logger.error(f"OAuth error: {params.get('error')}")
-        logger.error(f"Error description: {params.get('error_description')}")
-        return RedirectResponse(url=f"/signin#error={params['error']}&error_description={params.get('error_description', '')}")
-    
-    # Check for required parameters
-    if 'state' not in params:
-        logger.error("Missing state parameter in callback")
-        return RedirectResponse(url="/signin#error=invalid_callback&error_description=Missing state parameter")
-    
-    # Redirect to signin page with hash parameters for client-side handling
-    hash_params = "&".join(f"{k}={v}" for k, v in params.items())
-    logger.info(f"Redirecting to signin with params: {hash_params}")
-    return RedirectResponse(url=f"/signin#{hash_params}")
+    try:
+        # Get the Supabase callback URL
+        supabase_callback = f"{SUPABASE_URL}/auth/v1/callback"
+        logger.info(f"Redirecting to Supabase callback: {supabase_callback}")
+        
+        # Forward all query parameters to Supabase
+        query_string = request.url.query
+        redirect_url = f"{supabase_callback}?{query_string}"
+        
+        # Redirect to Supabase for auth handling
+        return RedirectResponse(
+            url=redirect_url,
+            status_code=307  # Temporary redirect, preserving HTTP method
+        )
+        
+    except Exception as e:
+        logger.error(f"Error in callback handler: {e}")
+        return RedirectResponse(
+            url=f"/signin#error=callback_error&error_description={str(e)}",
+            status_code=302
+        )
 
 @app.get("/profile")
 async def read_profile():
