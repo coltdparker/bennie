@@ -61,10 +61,6 @@ async function setupGoogleSignIn() {
                 throw new Error('Supabase client not initialized');
             }
 
-            // Get the Supabase callback URL from the config
-            const config = await getSupabaseConfig();
-            const supabaseUrl = config.url;
-
             // Generate and store state parameter
             const state = btoa(crypto.randomUUID());
             sessionStorage.setItem('oauth_state', state);
@@ -77,8 +73,7 @@ async function setupGoogleSignIn() {
                     queryParams: {
                         access_type: 'offline',
                         prompt: 'consent',
-                    },
-                    skipBrowserRedirect: false
+                    }
                 }
             });
 
@@ -87,7 +82,12 @@ async function setupGoogleSignIn() {
                 throw error;
             }
 
-            console.log('Sign-in initiated:', data);
+            if (data?.url) {
+                console.log('Redirecting to:', data.url);
+                window.location.href = data.url;
+            } else {
+                throw new Error('No redirect URL received from Supabase');
+            }
 
         } catch (error) {
             console.error('Google sign-in error:', error);
@@ -118,59 +118,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log('Setting up Google Sign In...');
         await setupGoogleSignIn();
         
-        // Handle OAuth redirect result
-        const hash = window.location.hash;
-        if (hash) {
-            try {
-                console.log('Processing OAuth redirect with hash:', hash);
-                
-                // Check for error in redirect
-                const params = new URLSearchParams(hash.substring(1));
-                const errorParam = params.get('error');
-                const errorDescription = params.get('error_description');
-                
-                if (errorParam) {
-                    console.error('OAuth redirect error:', {
-                        error: errorParam,
-                        description: errorDescription
-                    });
-                    throw new Error(errorDescription || errorParam);
-                }
-
-                // Verify state parameter
-                const state = params.get('state');
-                const storedState = sessionStorage.getItem('oauth_state');
-                console.log('Verifying state:', { received: state, stored: storedState });
-                
-                if (state !== storedState) {
-                    throw new Error('Invalid authentication state. Please try again.');
-                }
-
-                // Clear stored state
-                sessionStorage.removeItem('oauth_state');
-                console.log('State verified and cleared');
-
-                // Get the session
-                console.log('Fetching session...');
-                const { data: { session }, error } = await supabaseClient.auth.getSession();
-                
-                if (error) {
-                    console.error('Session error:', error);
-                    throw error;
-                }
-                
-                if (!session) {
-                    console.error('No session established');
-                    throw new Error('Failed to establish session');
-                }
-
-                console.log('Authentication successful, redirecting to profile...');
-                window.location.href = '/profile';
-
-            } catch (error) {
-                console.error('OAuth redirect error:', error);
-                showError('Failed to complete sign-in. Please try again.');
-            }
+        // Check for error in URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const error = urlParams.get('error');
+        const errorDescription = urlParams.get('error_description');
+        
+        if (error) {
+            console.error('OAuth error in URL:', { error, description: errorDescription });
+            const errorDisplay = document.createElement('div');
+            errorDisplay.className = 'error-message';
+            errorDisplay.textContent = errorDescription || error;
+            document.querySelector('.oauth-buttons').after(errorDisplay);
         }
     } catch (error) {
         console.error('Initialization error:', error);

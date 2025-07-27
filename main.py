@@ -150,35 +150,45 @@ async def auth_callback(request: Request):
         if not code:
             logger.error("No code parameter in callback")
             return RedirectResponse(
-                url="/signin#error=missing_code",
+                url="/signin?error=missing_code",
                 status_code=302
             )
 
-        # Exchange the code for a session
+        # Create Supabase client
         supabase = await createClient()
         logger.info("Exchanging code for session")
         
-        # Exchange the code for a session
-        result = await supabase.auth.exchange_code_for_session(code)
-        if result.error:
-            logger.error(f"Error exchanging code: {result.error}")
+        try:
+            # Exchange the code for a session
+            result = await supabase.auth.exchange_code_for_session(code)
+            logger.info("Successfully exchanged code for session")
+            
+            # Check if we got a session
+            if not result.session:
+                logger.error("No session in exchange result")
+                return RedirectResponse(
+                    url="/signin?error=no_session",
+                    status_code=302
+                )
+                
+            # Redirect to profile page
+            logger.info("Redirecting to profile page")
             return RedirectResponse(
-                url=f"/signin#error=exchange_failed&message={result.error.message}",
+                url="/profile",
                 status_code=302
             )
             
-        logger.info("Successfully exchanged code for session")
-        
-        # Redirect to profile page
-        return RedirectResponse(
-            url="/profile",
-            status_code=302
-        )
+        except Exception as e:
+            logger.error(f"Error exchanging code: {str(e)}")
+            return RedirectResponse(
+                url=f"/signin?error=exchange_failed&error_description={str(e)}",
+                status_code=302
+            )
         
     except Exception as e:
         logger.error(f"Error in callback handler: {str(e)}")
         return RedirectResponse(
-            url=f"/signin#error=callback_error&message={str(e)}",
+            url=f"/signin?error=callback_error&error_description={str(e)}",
             status_code=302
         )
 
