@@ -8,6 +8,15 @@ async function initializeSupabase() {
         const config = await getSupabaseConfig();
         console.log('Supabase config loaded:', { url: config.url, hasKey: !!config.anonKey });
         supabaseClient = createClient(config.url, config.anonKey);
+        
+        // Check if we already have a session
+        const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+        if (session) {
+            console.log('Existing session found, redirecting to profile...');
+            window.location.href = '/profile';
+            return;
+        }
+        
         return supabaseClient;
     } catch (error) {
         console.error('Failed to initialize Supabase:', error);
@@ -65,11 +74,14 @@ async function setupGoogleSignIn() {
             const state = btoa(crypto.randomUUID());
             sessionStorage.setItem('oauth_state', state);
 
-            console.log('Initiating Google sign-in...');
+            // Get the current URL for the redirect
+            const redirectUrl = new URL('/profile', window.location.origin).href;
+            console.log('Initiating Google sign-in with redirect URL:', redirectUrl);
+
             const { data, error } = await supabaseClient.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
-                    redirectTo: `${window.location.origin}/profile`,
+                    redirectTo: redirectUrl,
                     queryParams: {
                         state: state,
                         access_type: 'offline',
@@ -95,13 +107,70 @@ async function setupGoogleSignIn() {
                 showError('Authentication service is not properly configured. Please try again later.');
             } else if (error.message?.includes('network')) {
                 showError('Network error. Please check your internet connection and try again.');
+            } else if (error.message?.includes('redirect_url')) {
+                showError('Invalid redirect URL. Please contact support.');
             } else {
-                showError('Failed to initialize sign-in. Please try again.');
+                showError(`Failed to initialize sign-in: ${error.message}`);
             }
             
             setLoading(false);
         }
     });
+}
+
+// Handle OAuth redirect result
+async function handleRedirect() {
+    const hash = window.location.hash;
+    if (!hash) return;
+
+    try {
+        console.log('Processing OAuth redirect...');
+        
+        // Check for error in redirect
+        const params = new URLSearchParams(hash.substring(1));
+        const errorParam = params.get('error');
+        const errorDescription = params.get('error_description');
+        
+        if (errorParam) {
+            console.error('OAuth redirect error:', errorParam, errorDescription);
+            throw new Error(errorDescription || errorParam);
+        }
+
+        // Verify state parameter
+        const state = params.get('state');
+        const storedState = sessionStorage.getItem('oauth_state');
+        
+        if (state !== storedState) {
+            console.error('State mismatch:', { received: state, stored: storedState });
+            throw new Error('Invalid authentication state. Please try again.');
+        }
+
+        // Clear stored state
+        sessionStorage.removeItem('oauth_state');
+
+        // Get the session
+        const { data: { session }, error } = await supabaseClient.auth.getSession();
+        
+        if (error) {
+            console.error('Session error:', error);
+            throw error;
+        }
+        
+        if (!session) {
+            console.error('No session established');
+            throw new Error('Failed to establish session');
+        }
+
+        console.log('Authentication successful, redirecting to profile...');
+        window.location.href = '/profile';
+
+    } catch (error) {
+        console.error('OAuth redirect error:', error);
+        const errorDisplay = document.createElement('div');
+        errorDisplay.className = 'error-message';
+        errorDisplay.textContent = `Authentication failed: ${error.message}`;
+        document.querySelector('.oauth-buttons').after(errorDisplay);
+    }
 }
 
 // Initialize everything when DOM is ready
@@ -112,43 +181,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log('Setting up Google Sign In...');
         await setupGoogleSignIn();
         
-        // Handle OAuth redirect result
-        const hash = window.location.hash;
-        if (hash) {
-            try {
-                // Check for error in redirect
-                const errorParam = new URLSearchParams(hash.substring(1)).get('error');
-                if (errorParam) {
-                    showError(`Authentication failed: ${errorParam}`);
-                    return;
-                }
-
-                // Verify state parameter
-                const state = new URLSearchParams(hash.substring(1)).get('state');
-                const storedState = sessionStorage.getItem('oauth_state');
-                
-                if (state !== storedState) {
-                    showError('Invalid authentication state. Please try again.');
-                    return;
-                }
-
-                // Clear stored state
-                sessionStorage.removeItem('oauth_state');
-
-                // Handle the redirect result
-                const { data: { session }, error } = await supabaseClient.auth.getSession();
-                
-                if (error) throw error;
-                if (!session) throw new Error('Failed to establish session');
-
-                // Redirect to profile
-                window.location.href = '/profile';
-
-            } catch (error) {
-                console.error('OAuth redirect error:', error);
-                showError('Failed to complete sign-in. Please try again.');
-            }
-        }
+        // Handle any redirect result
+        await handleRedirect();
     } catch (error) {
         console.error('Initialization error:', error);
         const errorDisplay = document.createElement('div');

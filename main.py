@@ -137,6 +137,11 @@ async def read_signin():
     """Serve the sign-in page."""
     return FileResponse("frontend/src/signin.html")
 
+@app.get("/profile")
+async def read_profile():
+    """Serve the profile page."""
+    return FileResponse("frontend/src/profile.html")
+
 @app.post("/api/auth/signin")
 async def signin(signin_data: SignInRequest):
     """
