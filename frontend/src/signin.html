@@ -246,38 +246,9 @@
         </div>
     </div>
 
-    <!-- Add Supabase client before our script -->
+    <!-- Load dependencies in correct order -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script type="module">
-        import getSupabaseConfig from '/static/js/config.js';
-        
-        // Initialize Supabase client
-        async function initSupabase() {
-            try {
-                const config = await getSupabaseConfig();
-                const supabase = supabase.createClient(config.url, config.anonKey);
-                window.supabase = supabase;
-                
-                // Test the connection
-                try {
-                    await supabase.auth.getSession();
-                    console.log('Supabase client initialized and connected successfully');
-                } catch (connError) {
-                    console.error('Failed to connect to Supabase:', connError);
-                    throw connError;
-                }
-            } catch (error) {
-                console.error('Failed to initialize Supabase:', error);
-                // Show error to user
-                const errorDisplay = document.createElement('div');
-                errorDisplay.className = 'error-message';
-                errorDisplay.textContent = 'Failed to initialize authentication. Please try again later.';
-                document.querySelector('.oauth-buttons').before(errorDisplay);
-            }
-        }
-
-        initSupabase();
-    </script>
-    <script src="/static/js/signin.js"></script>
+    <script type="module" src="/static/js/config.js"></script>
+    <script type="module" src="/static/js/signin.js"></script>
 </body>
 </html> 

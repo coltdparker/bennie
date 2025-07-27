@@ -1,10 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
-    const form = document.getElementById('signinForm');
-    const emailInput = document.getElementById('email');
-    const passwordInput = document.getElementById('password');
-    const signinButton = document.getElementById('signinButton');
-    const emailError = document.getElementById('emailError');
-    const forgotPasswordLink = document.getElementById('forgotPasswordLink');
+document.addEventListener('DOMContentLoaded', async () => {
     const googleSignInButton = document.getElementById('googleSignIn');
     const errorDisplay = document.createElement('div');
     errorDisplay.className = 'error-message';
@@ -35,102 +29,71 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    // Handle forgot password
-    forgotPasswordLink.addEventListener('click', async (e) => {
-        e.preventDefault();
-        
-        const email = emailInput.value.trim();
-        if (!email) {
-            showError('Please enter your email address first');
-            return;
-        }
-
-        if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
-            showError('Please enter a valid email address');
-            return;
-        }
-
-        try {
-            setLoading(true);
-            
-            const response = await fetch('/api/auth/reset-password', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ email }),
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.detail || 'Failed to send reset email');
-            }
-
-            // Show success message
-            emailError.textContent = 'Password reset email sent. Please check your inbox.';
-            emailError.style.color = 'var(--success-green)';
-            emailError.style.display = 'block';
-
-        } catch (error) {
-            showError(error.message || 'Failed to send reset email');
-        } finally {
-            setLoading(false);
-        }
-    });
+    // Initialize Supabase client first
+    let supabaseClient;
+    try {
+        const config = await getSupabaseConfig();
+        supabaseClient = supabase.createClient(config.url, config.anonKey);
+        console.log('Supabase client initialized successfully');
+    } catch (error) {
+        console.error('Failed to initialize Supabase:', error);
+        showError('Failed to initialize authentication. Please try again later.');
+        return; // Exit if we can't initialize Supabase
+    }
 
     // Handle Google Sign In
-    googleSignInButton.addEventListener('click', async () => {
-        try {
-            hideError();
-            setLoading(true);
+    if (googleSignInButton) {
+        googleSignInButton.addEventListener('click', async () => {
+            try {
+                hideError();
+                setLoading(true);
 
-            // Generate and store state parameter
-            const state = btoa(crypto.randomUUID());
-            sessionStorage.setItem('oauth_state', state);
+                // Generate and store state parameter
+                const state = btoa(crypto.randomUUID());
+                sessionStorage.setItem('oauth_state', state);
 
-            // Initialize Supabase client
-            const { data, error } = await window.supabase.auth.signInWithOAuth({
-                provider: 'google',
-                options: {
-                    redirectTo: `${window.location.origin}/profile`,
-                    queryParams: {
-                        state: state,
-                        access_type: 'offline',
-                        prompt: 'consent'
+                const { data, error } = await supabaseClient.auth.signInWithOAuth({
+                    provider: 'google',
+                    options: {
+                        redirectTo: `${window.location.origin}/profile`,
+                        queryParams: {
+                            state: state,
+                            access_type: 'offline',
+                            prompt: 'consent'
+                        }
                     }
+                });
+
+                if (error) throw error;
+
+                // The redirect will happen automatically
+                console.log('Redirecting to Google sign in...');
+
+            } catch (error) {
+                console.error('Google sign-in error:', error);
+                
+                // Handle specific error cases
+                if (error.message?.includes('popup_closed_by_user')) {
+                    showError('Sign-in was cancelled. Please try again.', true);
+                } else if (error.message?.includes('configuration')) {
+                    showError('Authentication service is not properly configured. Please try again later.');
+                } else if (error.message?.includes('network')) {
+                    showError('Network error. Please check your internet connection and try again.');
+                } else {
+                    showError('Failed to initialize sign-in. Please try again.');
                 }
-            });
-
-            if (error) throw error;
-
-            // The redirect will happen automatically
-            console.log('Redirecting to Google sign in...');
-
-        } catch (error) {
-            console.error('Google sign-in error:', error);
-            
-            // Handle specific error cases
-            if (error.message?.includes('popup_closed_by_user')) {
-                showError('Sign-in was cancelled. Please try again.', true);
-            } else if (error.message?.includes('configuration')) {
-                showError('Authentication service is not properly configured. Please try again later.');
-            } else if (error.message?.includes('network')) {
-                showError('Network error. Please check your internet connection and try again.');
-            } else {
-                showError('Failed to initialize sign-in. Please try again.');
+                
+                setLoading(false);
             }
-            
-            setLoading(false);
-        }
-    });
+        });
+    } else {
+        console.error('Google sign-in button not found in the DOM');
+    }
 
     // Handle OAuth redirect result
-    window.addEventListener('load', async () => {
+    const hash = window.location.hash;
+    if (hash) {
         try {
-            const hash = window.location.hash;
-            if (!hash) return;
-
             // Check for error in redirect
             const errorParam = new URLSearchParams(hash.substring(1)).get('error');
             if (errorParam) {
@@ -151,7 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
             sessionStorage.removeItem('oauth_state');
 
             // Handle the redirect result
-            const { data: { session }, error } = await window.supabase.auth.getSession();
+            const { data: { session }, error } = await supabaseClient.auth.getSession();
             
             if (error) throw error;
             if (!session) throw new Error('Failed to establish session');
@@ -163,67 +126,5 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('OAuth redirect error:', error);
             showError('Failed to complete sign-in. Please try again.');
         }
-    });
-
-    // Handle form submission
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        console.log('Form submission started');
-        hideError();
-
-        const email = emailInput.value.trim();
-        const password = passwordInput.value;
-        
-        // Basic validation
-        if (!email || !password) {
-            console.warn('Empty email or password submitted');
-            showError('Please enter both email and password');
-            return;
-        }
-
-        if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
-            console.warn('Invalid email format:', email);
-            showError('Please enter a valid email address');
-            return;
-        }
-
-        try {
-            console.log('Setting loading state before API call');
-            setLoading(true);
-
-            // Send sign-in request to backend
-            console.log('Making API request to /api/auth/signin');
-            const response = await fetch('/api/auth/signin', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ email, password }),
-            });
-
-            console.log('API Response status:', response.status);
-            const data = await response.json();
-            console.log('API Response data:', data);
-
-            if (!response.ok) {
-                console.error('API error response:', data);
-                throw new Error(data.detail || 'Authentication failed');
-            }
-
-            // Store session data
-            if (data.session) {
-                localStorage.setItem('supabase.auth.token', data.session.access_token);
-                localStorage.setItem('user', JSON.stringify(data.user));
-            }
-
-            // Redirect to profile page
-            window.location.href = '/profile';
-
-        } catch (error) {
-            console.error('Sign-in error:', error);
-            showError(error.message || 'Failed to sign in. Please try again.');
-        } finally {
-            setLoading(false);
-        }
-    });
+    }
 }); 
