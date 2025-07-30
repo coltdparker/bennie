@@ -21,6 +21,14 @@ async function handleAuthCallback() {
     const error = urlParams.get('error');
     const errorDescription = urlParams.get('error_description');
     
+    console.log('Checking for OAuth callback params:', { 
+        hasCode: !!code, 
+        hasError: !!error,
+        code: code ? `${code.substring(0, 20)}...` : null,
+        error,
+        errorDescription 
+    });
+    
     if (error) {
         console.error('OAuth error in URL:', { error, description: errorDescription });
         showError(errorDescription || error);
@@ -30,26 +38,38 @@ async function handleAuthCallback() {
     }
     
     if (code) {
-        console.log('Found authorization code, creating session...');
+        console.log('Found authorization code, exchanging for session...');
         try {
-            // Exchange the code for a session
+            // Use the exchangeCodeForSession method
             const { data, error: sessionError } = await supabaseClient.auth.exchangeCodeForSession(code);
             
             if (sessionError) {
-                console.error('Session creation error:', sessionError);
+                console.error('Session exchange error:', sessionError);
                 throw sessionError;
             }
             
-            if (data.session) {
+            if (data?.session) {
                 console.log('Session created successfully, redirecting to profile...');
+                // Clean up URL before redirect
+                window.history.replaceState({}, document.title, '/signin');
+                // Redirect to profile page
                 window.location.href = '/profile';
                 return;
             } else {
-                throw new Error('No session created');
+                throw new Error('No session created from code exchange');
             }
         } catch (error) {
-            console.error('Error creating session from code:', error);
-            showError('Failed to complete sign-in. Please try again.');
+            console.error('Error exchanging code for session:', error);
+            
+            // Handle specific error cases
+            if (error.message?.includes('Invalid authorization code')) {
+                showError('Authorization code has expired. Please try signing in again.');
+            } else if (error.message?.includes('code_verifier')) {
+                showError('PKCE verification failed. Please try signing in again.');
+            } else {
+                showError(`Failed to complete sign-in: ${error.message}`);
+            }
+            
             // Clean up URL
             window.history.replaceState({}, document.title, '/signin');
         }
@@ -67,7 +87,14 @@ function showError(message) {
         errorDisplay.style.padding = '10px';
         errorDisplay.style.borderRadius = '5px';
         errorDisplay.style.marginTop = '10px';
-        document.querySelector('.oauth-buttons').after(errorDisplay);
+        errorDisplay.style.border = '1px solid rgba(239, 68, 68, 0.3)';
+        
+        const authButtons = document.querySelector('.oauth-buttons');
+        if (authButtons) {
+            authButtons.after(errorDisplay);
+        } else {
+            document.body.appendChild(errorDisplay);
+        }
     }
     
     errorDisplay.textContent = message;
@@ -95,7 +122,10 @@ async function setupGoogleSignIn() {
         buttons.forEach(button => {
             button.disabled = isLoading;
             if (button.id === 'googleSignIn') {
-                button.querySelector('span').textContent = isLoading ? 'Signing in...' : 'Sign in with Google';
+                const span = button.querySelector('span');
+                if (span) {
+                    span.textContent = isLoading ? 'Signing in...' : 'Sign in with Google';
+                }
             }
         });
     };
@@ -111,6 +141,7 @@ async function setupGoogleSignIn() {
             }
 
             console.log('Initiating Google sign-in...');
+            
             const { data, error } = await supabaseClient.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
@@ -123,13 +154,14 @@ async function setupGoogleSignIn() {
             });
 
             if (error) {
-                console.error('OAuth error:', error);
+                console.error('OAuth initiation error:', error);
                 throw error;
             }
 
             if (data?.url) {
-                console.log('Redirecting to:', data.url);
-                window.location.href = data.url;
+                console.log('Redirecting to Google OAuth:', data.url);
+                // Don't use window.location.href as it can be blocked by popup blockers
+                window.location.replace(data.url);
             } else {
                 throw new Error('No redirect URL received from Supabase');
             }
@@ -147,7 +179,7 @@ async function setupGoogleSignIn() {
             } else if (error.message?.includes('redirect_url')) {
                 showError('Invalid redirect URL. Please contact support.');
             } else {
-                showError(`Failed to initialize sign-in: ${error.message}`);
+                showError(`Failed to start sign-in: ${error.message}`);
             }
             
             setLoading(false);
@@ -158,16 +190,20 @@ async function setupGoogleSignIn() {
 // Initialize everything when DOM is ready
 document.addEventListener('DOMContentLoaded', async () => {
     try {
-        console.log('Initializing Supabase...');
+        console.log('DOM loaded, initializing authentication...');
+        console.log('Current URL:', window.location.href);
+        console.log('Current search params:', window.location.search);
+        
         await initializeSupabase();
-        console.log('Setting up Google Sign In...');
+        console.log('Supabase initialized, setting up Google Sign In...');
         await setupGoogleSignIn();
         
         // Handle OAuth callback if code is present
+        console.log('Checking for OAuth callback...');
         await handleAuthCallback();
         
     } catch (error) {
         console.error('Initialization error:', error);
-        showError('Failed to initialize authentication. Please try again later.');
+        showError('Failed to initialize authentication. Please refresh the page and try again.');
     }
 }); 
