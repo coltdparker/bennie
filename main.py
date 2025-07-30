@@ -19,6 +19,7 @@ from supabase import create_client, Client
 from typing import Optional
 import sys
 import datetime
+from urllib.parse import quote, unquote
 sys.path.append('./Backend')
 from new_user_email import send_welcome_email
 from Backend.bennie_email_sender import send_language_learning_email
@@ -142,11 +143,24 @@ async def auth_callback(request: Request):
     """Handle OAuth callback and redirect to appropriate page."""
     logger.info("Received OAuth callback")
     logger.info(f"Request URL: {request.url}")
-    logger.info(f"Query params: {request.query_params}")
+    logger.info(f"Query params: {dict(request.query_params)}")
     
     try:
         # Get the code from the query parameters
         code = request.query_params.get('code')
+        error = request.query_params.get('error')
+        error_description = request.query_params.get('error_description')
+        
+        # Log all parameters for debugging
+        logger.info(f"OAuth callback parameters - code: {'present' if code else 'missing'}, error: {error}, error_description: {error_description}")
+        
+        if error:
+            logger.error(f"OAuth error received: {error} - {error_description}")
+            return RedirectResponse(
+                url=f"/signin?error={error}&error_description={error_description or ''}",
+                status_code=302
+            )
+        
         if not code:
             logger.error("No code parameter in callback")
             return RedirectResponse(
@@ -154,17 +168,21 @@ async def auth_callback(request: Request):
                 status_code=302
             )
 
-        logger.info(f"Found authorization code: {code[:10]}...")
+        logger.info(f"Found authorization code: {code[:20]}... (length: {len(code)})")
         
         try:
-            # Use the global supabase client that's already initialized
-            # The Python client handles OAuth differently - we don't need to exchange the code
-            # on the backend. Instead, we redirect to the frontend with the code and let
-            # the client-side handle the session creation.
+            # URL encode the code to handle any special characters
+            encoded_code = quote(code, safe='')
             
+            logger.info(f"Original code: {code[:30]}... (length: {len(code)})")
+            logger.info(f"Encoded code: {encoded_code[:30]}... (length: {len(encoded_code)})")
             logger.info("Redirecting to signin page with authorization code")
+            
+            redirect_url = f"/signin?code={encoded_code}"
+            logger.info(f"Final redirect URL: {redirect_url}")
+            
             return RedirectResponse(
-                url=f"/signin?code={code}",
+                url=redirect_url,
                 status_code=302
             )
             

@@ -1,3 +1,4 @@
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 import getSupabaseConfig from './config.js';
 
 async function initializeProfile() {
@@ -8,7 +9,7 @@ async function initializeProfile() {
     try {
         // Initialize Supabase client
         const config = await getSupabaseConfig();
-        const supabase = supabase.createClient(config.url, config.anonKey);
+        const supabase = createClient(config.url, config.anonKey);
 
         // Get current session
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();

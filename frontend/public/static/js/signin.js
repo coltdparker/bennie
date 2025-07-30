@@ -21,10 +21,16 @@ async function handleAuthCallback() {
     const error = urlParams.get('error');
     const errorDescription = urlParams.get('error_description');
     
+    // Enhanced logging for debugging
+    console.log('=== OAuth Callback Debug Info ===');
+    console.log('Full URL:', window.location.href);
+    console.log('Search params:', window.location.search);
+    console.log('URL Params object:', Object.fromEntries(urlParams));
     console.log('Checking for OAuth callback params:', { 
         hasCode: !!code, 
         hasError: !!error,
-        code: code ? `${code.substring(0, 20)}...` : null,
+        code: code ? `${code.substring(0, 30)}...` : null,
+        codeLength: code ? code.length : 0,
         error,
         errorDescription 
     });
@@ -38,34 +44,62 @@ async function handleAuthCallback() {
     }
     
     if (code) {
-        console.log('Found authorization code, exchanging for session...');
+        console.log('Found authorization code, attempting to decode and exchange for session...');
         try {
-            // Use the exchangeCodeForSession method
-            const { data, error: sessionError } = await supabaseClient.auth.exchangeCodeForSession(code);
+            // Decode the URL-encoded code
+            const decodedCode = decodeURIComponent(code);
+            console.log('Decoded code length:', decodedCode.length);
+            console.log('Original vs decoded code match:', code === decodedCode);
+            
+            if (!supabaseClient) {
+                throw new Error('Supabase client not initialized');
+            }
+            
+            // Use the exchangeCodeForSession method with the decoded code
+            console.log('Calling exchangeCodeForSession...');
+            const { data, error: sessionError } = await supabaseClient.auth.exchangeCodeForSession(decodedCode);
             
             if (sessionError) {
                 console.error('Session exchange error:', sessionError);
+                console.error('Error details:', {
+                    message: sessionError.message,
+                    status: sessionError.status,
+                    statusText: sessionError.statusText
+                });
                 throw sessionError;
             }
             
             if (data?.session) {
-                console.log('Session created successfully, redirecting to profile...');
+                console.log('Session created successfully!');
+                console.log('Session data:', {
+                    user: data.session.user?.email,
+                    accessToken: data.session.access_token ? 'present' : 'missing',
+                    expiresAt: data.session.expires_at
+                });
                 // Clean up URL before redirect
                 window.history.replaceState({}, document.title, '/signin');
                 // Redirect to profile page
+                console.log('Redirecting to profile page...');
                 window.location.href = '/profile';
                 return;
             } else {
-                throw new Error('No session created from code exchange');
+                throw new Error('No session created from code exchange - data.session is missing');
             }
         } catch (error) {
             console.error('Error exchanging code for session:', error);
+            console.error('Error details:', {
+                name: error.name,
+                message: error.message,
+                stack: error.stack
+            });
             
             // Handle specific error cases
             if (error.message?.includes('Invalid authorization code')) {
                 showError('Authorization code has expired. Please try signing in again.');
             } else if (error.message?.includes('code_verifier')) {
                 showError('PKCE verification failed. Please try signing in again.');
+            } else if (error.message?.includes('fetch')) {
+                showError('Network error during authentication. Please check your connection and try again.');
             } else {
                 showError(`Failed to complete sign-in: ${error.message}`);
             }
@@ -73,6 +107,8 @@ async function handleAuthCallback() {
             // Clean up URL
             window.history.replaceState({}, document.title, '/signin');
         }
+    } else {
+        console.log('No authorization code found in URL parameters');
     }
 }
 
