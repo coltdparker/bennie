@@ -242,8 +242,24 @@ async def signin(signin_data: SignInRequest):
                     detail="Invalid email or password"
                 )
             
-            # Get user profile data
-            user_data = supabase.table("users").select("*").eq("email", email).single().execute()
+            # Get user profile data (excluding problematic confirmation_token column)
+            user_data = supabase.table("users").select("""
+                auth_user_id,
+                email,
+                name,
+                target_language,
+                proficiency_level,
+                learning_goal,
+                motivation_goal,
+                target_proficiency,
+                current_level,
+                current_skill_rating,
+                topics_of_interest,
+                email_schedule,
+                is_active,
+                created_at,
+                updated_at
+            """).eq("email", email).single().execute()
             
             logger.info(f"[SIGNIN] User {email} signed in successfully")
             
@@ -532,8 +548,24 @@ async def get_user(email: str):
         if not auth_user:
             raise HTTPException(status_code=404, detail="User not found")
         
-        # Get user profile from public.users
-        response = supabase.table("users").select("*").eq("auth_user_id", auth_user.id).execute()
+        # Get user profile from public.users (excluding problematic confirmation_token column)
+        response = supabase.table("users").select("""
+            auth_user_id,
+            email,
+            name,
+            target_language,
+            proficiency_level,
+            learning_goal,
+            motivation_goal,
+            target_proficiency,
+            current_level,
+            current_skill_rating,
+            topics_of_interest,
+            email_schedule,
+            is_active,
+            created_at,
+            updated_at
+        """).eq("auth_user_id", auth_user.id).execute()
         
         if not response.data:
             raise HTTPException(status_code=404, detail="User profile not found")
