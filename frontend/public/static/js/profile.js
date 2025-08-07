@@ -18,10 +18,26 @@ async function initializeProfile() {
             throw new Error('Please sign in to view your profile');
         }
 
-        // Fetch user profile data
+        // Fetch user profile data (excluding problematic confirmation_token column)
         const { data: profile, error: profileError } = await supabase
             .from('users')
-            .select('*')
+            .select(`
+                auth_user_id,
+                email,
+                name,
+                target_language,
+                proficiency_level,
+                learning_goal,
+                motivation_goal,
+                target_proficiency,
+                current_level,
+                current_skill_rating,
+                topics_of_interest,
+                email_schedule,
+                is_active,
+                created_at,
+                updated_at
+            `)
             .eq('auth_user_id', session.user.id)
             .single();
 
@@ -29,14 +45,14 @@ async function initializeProfile() {
             throw profileError;
         }
 
-        // Update UI with user data
-        document.getElementById('user-name').textContent = profile.full_name || session.user.user_metadata?.full_name || 'Not set';
+        // Update UI with user data (using correct column names)
+        document.getElementById('user-name').textContent = profile.name || session.user.user_metadata?.full_name || session.user.user_metadata?.name || 'Not set';
         document.getElementById('user-email').textContent = session.user.email;
-        document.getElementById('user-level').textContent = profile.current_level || 'Beginner';
+        document.getElementById('user-level').textContent = profile.current_level || profile.proficiency_level || 'Beginner';
         document.getElementById('target-proficiency').textContent = profile.target_proficiency || 'Not set';
         document.getElementById('skill-rating').textContent = profile.current_skill_rating || 'Not assessed';
-        document.getElementById('user-motivation').textContent = profile.motivation || 'Not set';
-        document.getElementById('user-interests').textContent = profile.interests?.join(', ') || 'Not set';
+        document.getElementById('user-motivation').textContent = profile.motivation_goal || 'Not set';
+        document.getElementById('user-interests').textContent = Array.isArray(profile.topics_of_interest) ? profile.topics_of_interest.join(', ') : (profile.topics_of_interest || 'Not set');
 
         // Show content
         loading.style.display = 'none';

@@ -205,6 +205,11 @@ async def read_profile():
     """Serve the profile page."""
     return FileResponse("frontend/src/profile.html")
 
+@app.get("/privacy")
+async def read_privacy():
+    """Serve the privacy policy page."""
+    return FileResponse("frontend/src/privacy.html")
+
 @app.post("/api/auth/signin")
 async def signin(signin_data: SignInRequest):
     """
